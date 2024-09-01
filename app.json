@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lumiwork",
     "slug": "Lumiwork",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -12,7 +12,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "buildNumber": "2",
+      
+      "bundleIdentifier": "com.senseitechh.Lumiwork"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +24,12 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ae040a3f-e178-4831-b486-7415e1a8e042"
+      }
     }
   }
 }
