@@ -3,6 +3,8 @@ import { ScrollView, Image, View, Text, TextInput, TouchableOpacity, Alert, Styl
 import emailjs from 'emailjs-com';
 import bgImage from '../assets/Mountains.jpg';
 import Config from 'react-native-config';
+import { addOrder } from '../DB';
+
 
 const OrderScreen = () => {
   const [firstName, setFirstName] = useState('');
@@ -33,24 +35,34 @@ const OrderScreen = () => {
       Alert.alert('Puutteelliset tiedot', 'Täytä kaikki pakolliset kentät.');
       return;
     }
-  
+
     const templateParams = {
       firstName,
       phoneNumber,
       address,
       selectedService,
     };
-  
+
     try {
       const response = await emailjs.send(
         Config.EMAILJS_SERVICE_ID,
         Config.EMAILJS_TEMPLATE_ID,
         templateParams,
-        Config.EMAILJS_USER_ID
+        Config.EMAILJS_USER_ID,
+
       );
-  
+
       if (response.status === 200) {
+
         Alert.alert('Tilaus Vahvistettu', `Kiitos ${selectedService} tilauksesta!`);
+
+      addOrder(firstName, phoneNumber, address, selectedService);
+
+      setFirstName('');
+      setPhoneNumber('');
+      setAddress('');
+      setSelectedService(null);
+
       } else {
         Alert.alert('Virhe', 'Tilausta ei vahvistettu. Yritä uudelleen.');
         console.log('Error response:', response);
@@ -60,7 +72,7 @@ const OrderScreen = () => {
       Alert.alert('Virhe', 'Tilausta ei vahvistettu. Yritä uudelleen.');
     }
   };
-  
+
 
   return (
     <KeyboardAvoidingView
@@ -110,7 +122,7 @@ const OrderScreen = () => {
               placeholder="Osoite"
               value={address}
               onChangeText={(text) => setAddress(text)}
-              autoComplete="street-address" 
+              autoComplete="street-address"
               returnKeyType="done"
             />
           </View>

@@ -23,7 +23,7 @@ const ContactComponent = () => {
 
   return (
     <TouchableOpacity
-      style={styles.lightGreyButton}
+      style={[styles.menuItem, {backgroundColor: '#fffff9'}]}
       onPress={handleCallButtonPress}
     >
       <Text style={[styles.menuItemText, { color: 'black' }]}>Soita</Text>

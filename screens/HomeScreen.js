@@ -6,6 +6,7 @@ import heroImage from '../assets/Mountains.jpg';
 import HeaderImage from '../assets/snow-logo.png';
 import ContactComponent from '../ContactComponent';
 
+
 const CustomButton = ({ title, onPress }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
     <Text style={styles.menuItemText}>{title}</Text>
@@ -18,6 +19,10 @@ const HomeScreen = () => {
 
   const handleOrderButtonPress = () => {
     navigation.navigate('Tilaus');
+  };
+
+  const handleOrderHistoryPress = () => {
+    navigation.navigate('Historia');
   };
 
   return (
@@ -44,9 +49,20 @@ const HomeScreen = () => {
           <CustomButton title="Tilaa Lumityö" onPress={handleOrderButtonPress} />
         </View>
 
+
         <View style={styles.menuItemContainer}>
           <ContactComponent phoneNumber={phoneNumber} />
         </View>
+
+        <View style={styles.menuItemContainer1}>
+        <TouchableOpacity style={styles.menuItem1} onPress={handleOrderHistoryPress}>
+          <Text style={styles.menuItemTextSmall}>Tilaushistoria</Text>
+        </TouchableOpacity>
+        </View>
+
+
+
+
       </View>
     </View>
   );
