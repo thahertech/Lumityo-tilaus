@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ScrollView, Image, View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import emailjs from 'emailjs-com';
 import bgImage from '../assets/Mountains.jpg';
-import Config from 'react-native-config';
+import Constants from 'expo-constants';
 import { addOrder } from '../DB';
 
 
@@ -11,6 +11,7 @@ const OrderScreen = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
   const [selectedService, setSelectedService] = useState(null);
+  const { extra } = Constants;
 
   const isFormValid = () => {
     return (
@@ -23,7 +24,7 @@ const OrderScreen = () => {
 
   const getServiceLabel = () => {
     if (selectedService === 'Lumityö') {
-      return 'Lumityö suoritetaan seuraavan kierroksen aikana \n\nHinta: 10 — 15 €';
+      return 'Lumityö suoritetaan seuraavan kierroksen aikana \n\nHinta: 10 — 20 €';
     } else if (selectedService === 'Polanteen poisto') {
       return 'Polanteen poisto suoritetaan seuraavan kierroksen aikana\n\nHinta: 20 — 30 €';
     }
@@ -43,12 +44,18 @@ const OrderScreen = () => {
       selectedService,
     };
 
+    // Accessing the HIDDEN variables
+    const EMAILJS_SERVICE_ID = extra?.EMAILJS_SERVICE_ID;
+    const EMAILJS_TEMPLATE_ID = extra?.EMAILJS_TEMPLATE_ID;
+    const EMAILJS_USER_ID = extra?.EMAILJS_USER_ID;
+
+
     try {
       const response = await emailjs.send(
-        Config.EMAILJS_SERVICE_ID,
-        Config.EMAILJS_TEMPLATE_ID,
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
         templateParams,
-        Config.EMAILJS_USER_ID,
+        EMAILJS_USER_ID,
 
       );
 

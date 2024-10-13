@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Text, Image, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import styles from '../styles';
 import heroImage from '../assets/Mountains.jpg';
-import HeaderImage from '../assets/snow-logo.png';
+import HeaderImage from '../assets/Header.png';
 import ContactComponent from '../ContactComponent';
 
 
@@ -28,8 +28,7 @@ const HomeScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar
-        barStyle="dark-content"
-        backgroundColor="transparent"
+        barStyle="light-content"
         translucent={true}
       />
 
@@ -44,6 +43,7 @@ const HomeScreen = () => {
         style={styles.headerImage}
         resizeMode="cover"
       />
+      
       <View>
         <View style={styles.menuItemContainer}>
           <CustomButton title="Tilaa Lumityö" onPress={handleOrderButtonPress} />

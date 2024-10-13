@@ -5,7 +5,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0039',
+    backgroundColor: '#000',
     ...Platform.select({
       android: {
         elevation: 5,
@@ -15,98 +15,114 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 5 },
         shadowOpacity: 0.9,
         shadowRadius: 5,
+        backgroundColor:'transparent',
       },
     }),
   },
 
+
   headerImage: {
     width: '100%',
     height: '100%',
-    position:'absolute',
+    position: 'absolute',
   },
 
   smallerHeaderImage: {
     width: '100%',
     height: 350,
     position: 'absolute',
-    top: 80,
-    borderRadius: 100,
+    top: 25,
+    borderRadius: 10,
     zIndex: 99,
+    opacity: 0.99,
+  },
+
+  menuItemContainer: {
+    top: 120,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20, // some top margin
+    width: '80%',
+  },
+  menuItemContainer1: {
+    top: 160,
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignContent: 'center',
+    alignSelf: 'center',
+    marginTop: 20,
+    width: '40%',
+    whiteSpace: 'none',
   },
 
   menuItem: {
-    top: 160,
-    borderRadius: 20,
+    flex: 1,
+    borderRadius: 10,
     padding: 10,
+    marginHorizontal: 5,
     backgroundColor: 'lightblue',
+    alignItems: 'center',
+    justifyContent: 'center',
     ...Platform.select({
       android: {
         elevation: 5,
       },
       ios: {
         shadowColor: 'black',
-            fontFamily: 'Inter',
-    fontWeight:'200',
+        fontFamily: 'Inter',
+        fontWeight: '200',
         shadowOffset: { width: 0, height: 5 },
         shadowOpacity: 0.7,
         shadowRadius: 10,
       },
     }),
   },
-  menuItemText: {
-    color: 'black',
-    textAlign: 'center',
-    fontFamily: 'Inter',
-    fontWeight: '200',
-    letterSpacing: 0.1,
-    fontSize: 36,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
 
-  lightGreyButton: {
-    borderRadius: 20,
-    top: 180,
+  menuItem1: {
+    flex: 1,
+    borderRadius: 10,
     padding: 10,
-    backgroundColor: '#D3D3D3',
+    textWrap: 'nowrap',
+    marginHorizontal: 5,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
     ...Platform.select({
       android: {
         elevation: 5,
       },
       ios: {
         shadowColor: 'black',
+        fontFamily: 'Inter',
+        fontWeight: '200',
         shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
+        shadowOpacity: 0.7,
+        shadowRadius: 10,
       },
     }),
-
-    inputContainer:{
-        color:"black",
-    }
   },
-  confirmButton: {
-
-    ios: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-
-    },
-    backgroundColor: 'lightblue',
-    padding: 15,
-    borderRadius: 5,
-    alignItems: 'center',
-
-    elevation: 3,
+  menuItemTextSmall: {
+    color: 'black',
+    textAlign: 'center',
+    fontFamily: 'Inter',
+    fontWeight: '200',
+    letterSpacing: 0.3,
+    fontSize: 18,
   },
+
+  menuItemText: {
+    color: 'black',
+    textAlign: 'center',
+    fontFamily: 'Inter',
+    fontWeight: '200',
+    letterSpacing: 0.3,
+    fontSize: 24,
+  },
+
   confirmButtonText: {
     color: 'black',
-    
-
-    },
+  },
 });
+
 
 export default styles;

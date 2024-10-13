@@ -27,9 +27,12 @@
       "favicon": "./assets/icon.png"
     },
     "extra": {
+        "EMAILJS_SERVICE_ID": "service_dnlb5bk",
+        "EMAILJS_TEMPLATE_ID": "template_za30asu",
+        "EMAILJS_USER_ID": "XwJENMkw3QXVvWHQB"
+      },
       "eas": {
         "projectId": "ae040a3f-e178-4831-b486-7415e1a8e042"
       }
     }
   }
-}
