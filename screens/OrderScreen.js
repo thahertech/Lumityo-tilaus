@@ -6,12 +6,12 @@ import Constants from 'expo-constants';
 import { addOrder } from '../DB';
 
 
+
 const OrderScreen = () => {
   const [firstName, setFirstName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
   const [selectedService, setSelectedService] = useState(null);
-  const { extra } = Constants;
 
   const isFormValid = () => {
     return (
@@ -43,11 +43,6 @@ const OrderScreen = () => {
       address,
       selectedService,
     };
-
-    // Accessing the HIDDEN variables
-    const EMAILJS_SERVICE_ID = extra?.EMAILJS_SERVICE_ID;
-    const EMAILJS_TEMPLATE_ID = extra?.EMAILJS_TEMPLATE_ID;
-    const EMAILJS_USER_ID = extra?.EMAILJS_USER_ID;
 
 
     try {
@@ -91,7 +86,6 @@ const OrderScreen = () => {
         style={styles.bgImage}
         resizeMode="cover"
       />
-      <ScrollView contentContainerStyle={styles.scrollViewContainer}>
         <View style={styles.container}>
 
           <Text style={[styles.label, { marginTop: 25, marginBottom: 25, fontSize: 30 }]}>
@@ -156,7 +150,7 @@ const OrderScreen = () => {
               value={firstName}
               onChangeText={(text) => setFirstName(text)}
               autoComplete="given-name"
-              returnKeyType="done" 
+              returnKeyType="done"
             />
           </View>
 
@@ -171,14 +165,16 @@ const OrderScreen = () => {
             <Text style={styles.confirmButtonText}>Vahvista tilaus</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    margin: 0,
     padding: 20,
+    overflow: 'hidden',
   },
   labelContainer: {
     marginBottom: 15,
@@ -186,7 +182,6 @@ const styles = StyleSheet.create({
   label: {
     marginTop: 20,
     marginBottom: 5,
-    fontFamily: 'Inter',
     fontWeight: '300',
     textAlign: 'center',
   },
@@ -196,8 +191,10 @@ const styles = StyleSheet.create({
   input: {
     height: 40,
     borderColor: 'gray',
+    backgroundColor: 'lightgrey',
     borderWidth: 1,
     paddingLeft: 10,
+    borderRadius: 10,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -254,7 +251,7 @@ const styles = StyleSheet.create({
   bgImage: {
     top: 0,
     height: 900,
-    width: 400,
+    width: '100%',
     position: 'absolute',
   },
 });

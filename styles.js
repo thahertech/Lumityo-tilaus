@@ -77,8 +77,7 @@ const styles = StyleSheet.create({
       },
     }),
   },
-
-  menuItem1: {
+menuItem1: {
     flex: 1,
     borderRadius: 10,
     padding: 10,

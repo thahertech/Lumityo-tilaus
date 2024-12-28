@@ -1,34 +1,40 @@
-import React from 'react';
-import { TouchableOpacity, Text, Linking } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import styles from './styles';
+import React, { useEffect, useState } from 'react';
+import { TouchableOpacity, Text, Linking, Alert } from 'react-native';
+import styles from '././styles';
 
-const ContactComponent = () => {
-  const phoneNumber = '+358407362403';
-  const navigation = useNavigation();
+const CallButton = ({ phoneNumber }) => {
+  const [isSupported, setIsSupported] = useState(false);
 
-  const handleCallButtonPress = () => {
-    const phoneUrl = `tel:${phoneNumber}`;
+  useEffect(() => {
+    const checkSupport = async () => {
+      const url = `tel:${phoneNumber}`;
+      try {
+        const supported = await Linking.canOpenURL(url);
+        setIsSupported(supported);
+      } catch (err) {
+        console.error('Error checking tel: support', err);
+        setIsSupported(false);
+      }
+    };
 
-    Linking.canOpenURL(phoneUrl)
-      .then((supported) => {
-        if (!supported) {
-          console.error("Phone number is not supported on this device.");
-        } else {
-          return Linking.openURL(phoneUrl);
-        }
-      })
-      .catch((err) => console.error('Error occurred:', err));
+    checkSupport();
+  }, [phoneNumber]);
+
+  const handlePress = () => {
+    const url = `tel:${phoneNumber}`;
+    Linking.openURL(url).catch((err) => {
+      Alert.alert('Error', `An unexpected error occurred: ${err.message}`);
+    });
   };
 
+
   return (
-    <TouchableOpacity
-      style={[styles.menuItem, {backgroundColor: '#fffff9'}]}
-      onPress={handleCallButtonPress}
-    >
-      <Text style={[styles.menuItemText, { color: 'black' }]}>Soita</Text>
+    <TouchableOpacity onPress={handlePress}
+    style={[styles.menuItem, {backgroundColor: '#fffff9'}]}
+>
+<Text style={[styles.menuItemText, { color: 'black' }]}>Soita {phoneNumber}</Text>
     </TouchableOpacity>
   );
 };
 
-export default ContactComponent;
+export default CallButton;
