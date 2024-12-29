@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
-import { ScrollView, Image, View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
+import { ScrollView,TouchableWithoutFeedback, Keyboard, Image, View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import emailjs from 'emailjs-com';
 import bgImage from '../assets/Mountains.jpg';
-import Constants from 'expo-constants';
-import { addOrder } from '../DB';
-
 
 
 const OrderScreen = () => {
@@ -12,6 +9,7 @@ const OrderScreen = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
   const [selectedService, setSelectedService] = useState(null);
+  const [info, setInfo] = useState('');
 
   const isFormValid = () => {
     return (
@@ -41,10 +39,12 @@ const OrderScreen = () => {
       firstName,
       phoneNumber,
       address,
+      info,
       selectedService,
     };
 
 
+    
     try {
       const response = await emailjs.send(
         EMAILJS_SERVICE_ID,
@@ -58,11 +58,11 @@ const OrderScreen = () => {
 
         Alert.alert('Tilaus Vahvistettu', `Kiitos ${selectedService} tilauksesta!`);
 
-      addOrder(firstName, phoneNumber, address, selectedService);
 
       setFirstName('');
       setPhoneNumber('');
       setAddress('');
+      setInfo('');
       setSelectedService(null);
 
       } else {
@@ -77,121 +77,148 @@ const OrderScreen = () => {
 
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
-    >
-      <Image
-        source={bgImage}
-        style={styles.bgImage}
-        resizeMode="cover"
-      />
-        <View style={styles.container}>
-
-          <Text style={[styles.label, { marginTop: 25, marginBottom: 25, fontSize: 30 }]}>
-            Valitse palvelu
-          </Text>
-          <View style={[styles.buttonContainer, { marginBottom: 20 }]}>
-            <TouchableOpacity
-              style={[
-                styles.serviceButton,
-                selectedService === 'Lumityö' && { backgroundColor: 'lightblue' },
-              ]}
-              onPress={() => setSelectedService('Lumityö')}
-            >
-              <Text style={styles.serviceButtonText}>Lumityö</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.serviceButton,
-                selectedService === 'Polanteen poisto' && { backgroundColor: 'lightblue' },
-              ]}
-              onPress={() => setSelectedService('Polanteen poisto')}
-            >
-              <Text style={styles.serviceButtonText}>Polanteen poisto</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.labelContainer}>
-            <Text style={[styles.label, { marginBottom: 29 }]}>{getServiceLabel()}</Text>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Osoite</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Osoite"
-              value={address}
-              onChangeText={(text) => setAddress(text)}
-              autoComplete="street-address"
-              returnKeyType="done"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Puhelinnumero</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Puhelinnumero"
-              value={phoneNumber}
-              onChangeText={(text) => setPhoneNumber(text)}
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              textContentType="telephoneNumber"
-              returnKeyType="done"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Etunimi</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Etunimi"
-              value={firstName}
-              onChangeText={(text) => setFirstName(text)}
-              autoComplete="given-name"
-              returnKeyType="done"
-            />
-          </View>
-
+<KeyboardAvoidingView
+  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  style={{ flex: 1 }}
+>
+  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    <View style={{ flex: 1 }}>
+      <Image source={bgImage} style={styles.bgImage} resizeMode="cover" />
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={[styles.label, { marginTop: 15, marginBottom: 25, fontSize: 24 }]}>
+          Valitse palvelu
+        </Text>
+        <View style={[styles.buttonContainer, { marginBottom: 5 }]}>
           <TouchableOpacity
             style={[
-              styles.confirmButton,
-              !isFormValid() && { backgroundColor: 'grey', marginTop: 100 },
+              styles.serviceButton,
+              selectedService === 'Lumityö' && { backgroundColor: 'lightblue' },
             ]}
-            onPress={handleOrderConfirmation}
-            disabled={!isFormValid()}
+            onPress={() => setSelectedService('Lumityö')}
           >
-            <Text style={styles.confirmButtonText}>Vahvista tilaus</Text>
+            <Text style={styles.serviceButtonText}>Lumityö</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.serviceButton,
+              selectedService === 'Polanteen poisto' && { backgroundColor: 'lightblue' },
+            ]}
+            onPress={() => setSelectedService('Polanteen poisto')}
+          >
+            <Text style={styles.serviceButtonText}>Polanteen poisto</Text>
           </TouchableOpacity>
         </View>
-    </KeyboardAvoidingView>
+
+        <View style={styles.labelContainer}>
+          <Text style={[styles.label, { marginBottom: 29 }]}>
+            {getServiceLabel()}
+          </Text>
+        </View>
+
+        {/* Input Fields */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Osoite</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Osoite, 1 A"
+            value={address}
+            onChangeText={(text) => setAddress(text)}
+            autoComplete="street-address"
+            returnKeyType="done"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Puhelinnumero</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Puhelinnumero"
+            value={phoneNumber}
+            onChangeText={(text) => setPhoneNumber(text)}
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            textContentType="telephoneNumber"
+            returnKeyType="done"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Nimi</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Etunimi Sukunimi"
+            value={firstName}
+            onChangeText={(text) => setFirstName(text)}
+            autoComplete="name"
+            returnKeyType="done"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Lisätietoja</Text>
+          <TextInput
+            style={[styles.input, { height: 100, textAlignVertical: 'top', padding: 10 }]}
+            placeholder="Kirjoita lisätiedot tähän..."
+            value={info}
+            onChangeText={(text) => setInfo(text)}
+            returnKeyType="default"
+            multiline={true}
+            numberOfLines={4}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.confirmButton,
+            !isFormValid() && { backgroundColor: 'grey', marginTop: 0 },
+          ]}
+          onPress={handleOrderConfirmation}
+          disabled={!isFormValid()}
+        >
+          <Text style={styles.confirmButtonText}>Vahvista tilaus</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  </TouchableWithoutFeedback>
+</KeyboardAvoidingView>
   );
 };
 
+
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     margin: 0,
     padding: 20,
-    overflow: 'hidden',
+    paddingBottom: 100,
+
+    
   },
   labelContainer: {
-    marginBottom: 15,
+    marginBottom: 10,
+    color: '#fff'
   },
   label: {
     marginTop: 20,
     marginBottom: 5,
     fontWeight: '300',
-    textAlign: 'center',
+    textAlign: 'left',
+    
   },
   inputContainer: {
-    marginBottom: 15,
+    marginBottom: 5,
+    
+  },
+  inputContainerlabel: {
+    color: 'white'
+
   },
   input: {
     height: 40,
     borderColor: 'gray',
-    backgroundColor: 'lightgrey',
     borderWidth: 1,
     paddingLeft: 10,
     borderRadius: 10,
@@ -250,7 +277,7 @@ const styles = StyleSheet.create({
   },
   bgImage: {
     top: 0,
-    height: 900,
+    height: '100%',
     width: '100%',
     position: 'absolute',
   },
