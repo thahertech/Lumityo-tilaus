@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Lumiwork",
+    "name": "Lumityöt",
     "slug": "Lumiwork",
-    "version": "1.1.0",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "3",
+      "buildNumber": "4",
       "bundleIdentifier": "com.senseitechh.Lumiwork"
     },
     "android": {
@@ -21,18 +21,23 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.senseitechh.Lumiwork"
+      "package": "com.senseitechh.Lumiwork",
+      "versionCode": 4
+
     },
     "web": {
       "favicon": "./assets/icon.png"
     },
     "extra": {
-        "EMAILJS_SERVICE_ID": "service_dnlb5bk",
-        "EMAILJS_TEMPLATE_ID": "template_za30asu",
-        "EMAILJS_USER_ID": "XwJENMkw3QXVvWHQB"
-      },
+      "EMAILJS_SERVICE_ID": "service_dnlb5bk",
+      "EMAILJS_TEMPLATE_ID": "template_za30asu",
+      "EMAILJS_USER_ID": "XwJENMkw3QXVvWHQB",
       "eas": {
         "projectId": "ae040a3f-e178-4831-b486-7415e1a8e042"
       }
+    },
+    "eas": {
+      "projectId": "ae040a3f-e178-4831-b486-7415e1a8e042"
     }
   }
+}

@@ -43,7 +43,9 @@ const OrderScreen = () => {
       selectedService,
     };
 
-
+    const EMAILJS_SERVICE_ID = "service_dnlb5bk";
+    const EMAILJS_TEMPLATE_ID = "template_za30asu";
+    const EMAILJS_USER_ID = "XwJENMkw3QXVvWHQB";
     
     try {
       const response = await emailjs.send(
@@ -76,211 +78,94 @@ const OrderScreen = () => {
   };
 
 
-  return (
-<KeyboardAvoidingView
-  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-  style={{ flex: 1 }}
->
-  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    <View style={{ flex: 1 }}>
-      <Image source={bgImage} style={styles.bgImage} resizeMode="cover" />
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={[styles.label, { marginTop: 15, marginBottom: 25, fontSize: 24 }]}>
-          Valitse palvelu
-        </Text>
-        <View style={[styles.buttonContainer, { marginBottom: 5 }]}>
-          <TouchableOpacity
-            style={[
-              styles.serviceButton,
-              selectedService === 'Lumityö' && { backgroundColor: 'lightblue' },
-            ]}
-            onPress={() => setSelectedService('Lumityö')}
-          >
-            <Text style={styles.serviceButtonText}>Lumityö</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.serviceButton,
-              selectedService === 'Polanteen poisto' && { backgroundColor: 'lightblue' },
-            ]}
-            onPress={() => setSelectedService('Polanteen poisto')}
-          >
-            <Text style={styles.serviceButtonText}>Polanteen poisto</Text>
-          </TouchableOpacity>
-        </View>
+   return (
+     <KeyboardAvoidingView
+       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+       style={{ flex: 1 }}
+     >
+       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+         <View style={{ flex: 1 }}>
+           <Image source={bgImage} style={styles.bgImage} />
+           <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.scrollContainer}>
+             <Text style={styles.title}>Valitse palvelu</Text>
+             <View style={styles.buttonContainer}>
+               {['Lumityö', 'Polanteen poisto'].map((service) => (
+                 <TouchableOpacity
+                   key={service}
+                   style={[
+                     styles.serviceButton,
+                     selectedService === service && styles.selectedServiceButton,
+                   ]}
+                   onPress={() => setSelectedService(service)}
+                 >
+                   <Text style={styles.serviceButtonText}>{service}</Text>
+                 </TouchableOpacity>
+               ))}
+             </View>
 
-        <View style={styles.labelContainer}>
-          <Text style={[styles.label, { marginBottom: 29 }]}>
-            {getServiceLabel()}
-          </Text>
-        </View>
+             <Text style={styles.serviceDescription}>{getServiceLabel()}</Text>
 
-        {/* Input Fields */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Osoite</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Osoite, 1 A"
-            value={address}
-            onChangeText={(text) => setAddress(text)}
-            autoComplete="street-address"
-            returnKeyType="done"
-          />
-        </View>
+             <TextInput
+               style={styles.input}
+               placeholder="Osoite, 1 A"
+               value={address}
+               onChangeText={setAddress}
+               autoComplete="street-address"
+             />
+             <TextInput
+               style={styles.input}
+               placeholder="123 4567890"
+               value={phoneNumber}
+               onChangeText={setPhoneNumber}
+               keyboardType="phone-pad"
+             />
+             <TextInput
+               style={styles.input}
+               placeholder="Etunimi Sukunimi"
+               value={firstName}
+               onChangeText={setFirstName}
+             />
+             <TextInput
+               style={[styles.input, styles.textArea]}
+               placeholder="Kirjoita lisätiedot tähän..."
+               value={info}
+               onChangeText={setInfo}
+               multiline
+             />
+             <TouchableOpacity
+               style={[
+                 styles.confirmButton,
+                 !isFormValid() && styles.disabledButton,
+               ]}
+               onPress={handleOrderConfirmation}
+               disabled={!isFormValid()}
+             >
+               <Text style={styles.confirmButtonText}>Vahvista tilaus</Text>
+             </TouchableOpacity>
+           </ScrollView>
+         </View>
+       </TouchableWithoutFeedback>
+     </KeyboardAvoidingView>
+   );
+ };
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Puhelinnumero</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Puhelinnumero"
-            value={phoneNumber}
-            onChangeText={(text) => setPhoneNumber(text)}
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            textContentType="telephoneNumber"
-            returnKeyType="done"
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Nimi</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Etunimi Sukunimi"
-            value={firstName}
-            onChangeText={(text) => setFirstName(text)}
-            autoComplete="name"
-            returnKeyType="done"
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Lisätietoja</Text>
-          <TextInput
-            style={[styles.input, { height: 100, textAlignVertical: 'top', padding: 10 }]}
-            placeholder="Kirjoita lisätiedot tähän..."
-            value={info}
-            onChangeText={(text) => setInfo(text)}
-            returnKeyType="default"
-            multiline={true}
-            numberOfLines={4}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.confirmButton,
-            !isFormValid() && { backgroundColor: 'grey', marginTop: 0 },
-          ]}
-          onPress={handleOrderConfirmation}
-          disabled={!isFormValid()}
-        >
-          <Text style={styles.confirmButtonText}>Vahvista tilaus</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  </TouchableWithoutFeedback>
-</KeyboardAvoidingView>
-  );
-};
-
-
-const styles = StyleSheet.create({
-  container: {
+ const styles = StyleSheet.create({
+  scrollContainer: {
     flexGrow: 1,
-    margin: 0,
-    padding: 20,
-    paddingBottom: 100,
+  },   title: { fontSize: 24, marginVertical: 15, fontWeight: 'bold' },
+   buttonContainer: { flexDirection: 'row', justifyContent: 'space-between' },
+   serviceButton: { flex: 1, margin: 5, padding: 10, backgroundColor: '#ddd' },
+   selectedServiceButton: { backgroundColor: 'lightblue' },
+   serviceButtonText: { textAlign: 'center', fontWeight: 'bold' },
+   serviceDescription: { marginVertical: 10, fontSize: 16 },
+   input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginVertical: 10, borderRadius: 5 },
+   textArea: { height: 100 },
+   confirmButton: { backgroundColor: 'lightblue', padding: 15, borderRadius: 5 },
+   disabledButton: { backgroundColor: 'gray' },
+   confirmButtonText: { textAlign: 'center', fontWeight: 'bold', color: 'white' },
+   bgImage: { flex: 1, position: 'absolute', width: '100%', height: '100%' },
+ });
 
-    
-  },
-  labelContainer: {
-    marginBottom: 10,
-    color: '#fff'
-  },
-  label: {
-    marginTop: 20,
-    marginBottom: 5,
-    fontWeight: '300',
-    textAlign: 'left',
-    
-  },
-  inputContainer: {
-    marginBottom: 5,
-    
-  },
-  inputContainerlabel: {
-    color: 'white'
-
-  },
-  input: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    paddingLeft: 10,
-    borderRadius: 10,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 15,
-    ...Platform.select({
-      android: {
-        elevation: 5,
-      },
-      ios: {
-        shadowColor: 'black',
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.4,
-        shadowRadius: 5,
-      },
-    }),
-  },
-  serviceButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'lightgrey',
-    paddingVertical: 10,
-    marginHorizontal: 5,
-    borderRadius: 8,
-  },
-  serviceButtonText: {
-    color: 'black',
-    fontWeight: '400',
-    fontSize: 15,
-  },
-  confirmButton: {
-    marginTop: 50,
-    backgroundColor: 'lightblue',
-    padding: 15,
-    borderRadius: 5,
-    alignItems: 'center',
-    ...Platform.select({
-      android: {
-        elevation: 5,
-      },
-      ios: {
-        shadowColor: 'black',
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.4,
-        shadowRadius: 5,
-      },
-    }),
-  },
-  confirmButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  bgImage: {
-    top: 0,
-    height: '100%',
-    width: '100%',
-    position: 'absolute',
-  },
-});
-
-export default OrderScreen;
+ export default OrderScreen;

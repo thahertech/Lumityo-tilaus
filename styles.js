@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 10,
     padding: 10,
+
     marginHorizontal: 5,
     backgroundColor: 'lightblue',
     alignItems: 'center',
@@ -69,7 +70,6 @@ const styles = StyleSheet.create({
       },
       ios: {
         shadowColor: 'black',
-        fontFamily: 'Inter',
         fontWeight: '200',
         shadowOffset: { width: 0, height: 5 },
         shadowOpacity: 0.7,
@@ -92,7 +92,6 @@ menuItem1: {
       },
       ios: {
         shadowColor: 'black',
-        fontFamily: 'Inter',
         fontWeight: '200',
         shadowOffset: { width: 0, height: 5 },
         shadowOpacity: 0.7,
@@ -103,7 +102,6 @@ menuItem1: {
   menuItemTextSmall: {
     color: 'black',
     textAlign: 'center',
-    fontFamily: 'Inter',
     fontWeight: '200',
     letterSpacing: 0.3,
     fontSize: 18,
@@ -112,8 +110,7 @@ menuItem1: {
   menuItemText: {
     color: 'black',
     textAlign: 'center',
-    fontFamily: 'Inter',
-    fontWeight: '200',
+    fontWeight: '300',
     letterSpacing: 0.3,
     fontSize: 24,
   },

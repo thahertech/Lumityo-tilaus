@@ -31,8 +31,8 @@ const HomeScreen = () => {
   // };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent={true} />
+     <View style={[styles.container, { paddingTop: StatusBar.currentHeight || 0 }]}>
+         <StatusBar barStyle="light-content" translucent={true} />
 
       {/* Header Images */}
       <Image source={HeaderImage} style={styles.smallerHeaderImage} resizeMode="cover" />
@@ -48,16 +48,7 @@ const HomeScreen = () => {
           <ContactComponent phoneNumber={phoneNumber} />
         </View>
 
-        {/* <View style={styles.menuItemContainer1}>
-          <TouchableOpacity
-            style={styles.menuItem1}
-            onPress={handleOrderHistoryPress}
-            activeOpacity={0.7}
-            accessibilityLabel="Tilaushistoria"
-          >
-            <Text style={styles.menuItemTextSmall}>Tilaushistoria</Text>
-          </TouchableOpacity>
-        </View> */}
+
       </View>
     </View>
   );

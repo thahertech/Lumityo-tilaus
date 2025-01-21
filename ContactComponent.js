@@ -32,7 +32,7 @@ const CallButton = ({ phoneNumber }) => {
     <TouchableOpacity onPress={handlePress}
     style={[styles.menuItem, {backgroundColor: '#fffff9'}]}
 >
-<Text style={[styles.menuItemText, { color: 'black' }]}>Soita {phoneNumber}</Text>
+<Text style={[styles.menuItemText, { color: 'black' }]}>Soita</Text>
     </TouchableOpacity>
   );
 };
