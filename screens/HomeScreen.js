@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import styles from '../styles';
 import heroImage from '../assets/Mountains.jpg';
 import HeaderImage from '../assets/Header.png';
-import ContactComponent from '../ContactComponent';
+import ContactButtons from '../ContactComponent';
 
 // Reusable button component
 const CustomButton = ({ title, onPress }) => (
@@ -26,10 +26,6 @@ const HomeScreen = () => {
     navigation.navigate('Tilaus');
   };
 
-  // const handleOrderHistoryPress = () => {
-  //   navigation.navigate('Historia');
-  // };
-
   return (
      <View style={[styles.container, { paddingTop: StatusBar.currentHeight || 0 }]}>
          <StatusBar barStyle="light-content" translucent={true} />
@@ -44,12 +40,16 @@ const HomeScreen = () => {
           <CustomButton title="Tilaa Lumityö" onPress={handleOrderButtonPress} />
         </View>
 
+
         <View style={styles.menuItemContainer}>
-          <ContactComponent phoneNumber={phoneNumber} />
+          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('omat tiedot')}>
+            <Text style={styles.menuItemText}>Omat tiedot</Text>
+          </TouchableOpacity>
         </View>
-
-
       </View>
+                      <View style={styles.menuItemContainer}>
+          <ContactButtons phoneNumber={phoneNumber} />
+        </View>
     </View>
   );
 };

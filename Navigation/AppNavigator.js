@@ -3,8 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
 import HomeScreen from '../screens/HomeScreen';
 import OrderScreen from '../screens/OrderScreen';
-// import OrderHistoryScreen from '../screens/ExtraScreen';
-
+import OmatTiedotScreen from '../screens/OmatTiedotScreen';
 const Stack = createStackNavigator();
 
 const AppNavigator = () => (
@@ -25,10 +24,8 @@ const AppNavigator = () => (
         name="Tilaus"
         component={OrderScreen}
       />
-      {/* <Stack.Screen
-        name="Historia"
-        component={OrderHistoryScreen}
-      /> */}
+      <Stack.Screen name="omat tiedot" component={OmatTiedotScreen} />
+     
     </Stack.Navigator>
   </NavigationContainer>
 );

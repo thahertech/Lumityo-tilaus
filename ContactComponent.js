@@ -1,40 +1,81 @@
 import React, { useEffect, useState } from 'react';
-import { TouchableOpacity, Text, Linking, Alert } from 'react-native';
-import styles from '././styles';
+import { TouchableOpacity, Text, Linking, Alert, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import styles from './styles';
 
-const CallButton = ({ phoneNumber }) => {
-  const [isSupported, setIsSupported] = useState(false);
+const ContactButtons = ({ phoneNumber, email = "info@lumityo.fi" }) => {
+  const [isPhoneSupported, setIsPhoneSupported] = useState(false);
+  const [isEmailSupported, setIsEmailSupported] = useState(false);
 
   useEffect(() => {
     const checkSupport = async () => {
-      const url = `tel:${phoneNumber}`;
       try {
-        const supported = await Linking.canOpenURL(url);
-        setIsSupported(supported);
+        const phoneUrl = `tel:${phoneNumber}`;
+        const emailUrl = `mailto:${email}`;
+        
+        const phoneSupported = await Linking.canOpenURL(phoneUrl);
+        const emailSupported = await Linking.canOpenURL(emailUrl);
+        
+        setIsPhoneSupported(phoneSupported);
+        setIsEmailSupported(emailSupported);
       } catch (err) {
-        console.error('Error checking tel: support', err);
-        setIsSupported(false);
+        console.error('Error checking URL support', err);
       }
     };
 
     checkSupport();
-  }, [phoneNumber]);
+  }, [phoneNumber, email]);
 
-  const handlePress = () => {
+  const handlePhonePress = () => {
     const url = `tel:${phoneNumber}`;
+    console.log('Attempting to open URL:', url);
     Linking.openURL(url).catch((err) => {
-      Alert.alert('Error', `An unexpected error occurred: ${err.message}`);
+      Alert.alert('Virhe', `Puhelun soittaminen epäonnistui: ${err.message}`);
     });
   };
 
+  const handleEmailPress = () => {
+    const url = `mailto:${email}?subject=Lumityö-kysely&body=Hei,%0D%0A%0D%0AHaluaisin kysyä lumityöstä...`;
+    Linking.openURL(url).catch((err) => {
+      Alert.alert('Virhe', `Sähköpostin avaaminen epäonnistui: ${err.message}`);
+    });
+  };
 
   return (
-    <TouchableOpacity onPress={handlePress}
-    style={[styles.menuItem, {backgroundColor: '#fffff9'}]}
->
-<Text style={[styles.menuItemText, { color: 'black' }]}>Soita</Text>
-    </TouchableOpacity>
+    <View style={styles.contactButtonsContainer}>
+      {/* Phone Button */}
+      <TouchableOpacity 
+        onPress={handlePhonePress}
+        style={[styles.contactButton, styles.phoneButton]}
+        activeOpacity={0.8}
+        disabled={!isPhoneSupported}
+      >
+        <Ionicons 
+          name="call" 
+          size={24} 
+          color="#fff" 
+          style={styles.contactIcon}
+        />
+        <Text style={styles.contactButtonText}>Soita</Text>
+      </TouchableOpacity>
+
+      {/* Email Button */}
+      <TouchableOpacity 
+        onPress={handleEmailPress}
+        style={[styles.contactButton, styles.emailButton]}
+        activeOpacity={0.8}
+        disabled={!isEmailSupported}
+      >
+        <Ionicons 
+          name="mail" 
+          size={24} 
+          color="#fff" 
+          style={styles.contactIcon}
+        />
+        <Text style={styles.contactButtonText}>Sähköposti</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
-export default CallButton;
+export default ContactButtons;

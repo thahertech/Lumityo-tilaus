@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lumityöt",
     "slug": "Lumiwork",
-    "version": "1.5.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,8 +21,8 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.senseitechh.Lumiwork",
-      "versionCode": 5
+      "package": "com.senseistudios.lumiwork",
+      "versionCode": 1
 
     },
     "web": {
