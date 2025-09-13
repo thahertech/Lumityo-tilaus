@@ -3,6 +3,7 @@
     "name": "Lumityöt",
     "slug": "Lumiwork",
     "version": "1.0.0",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -23,7 +24,6 @@
       },
       "package": "com.senseistudios.lumiwork",
       "versionCode": 1
-
     },
     "web": {
       "favicon": "./assets/icon.png"
@@ -38,6 +38,11 @@
     },
     "eas": {
       "projectId": "ae040a3f-e178-4831-b486-7415e1a8e042"
-    }
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font",
+      "expo-sqlite"
+    ]
   }
 }
