@@ -43,7 +43,6 @@ const ContactButtons = ({ phoneNumber, email = "info@lumityo.fi" }) => {
 
   return (
     <View style={styles.contactButtonsContainer}>
-      {/* Phone Button */}
       <TouchableOpacity 
         onPress={handlePhonePress}
         style={[styles.contactButton, styles.phoneButton]}
@@ -52,28 +51,14 @@ const ContactButtons = ({ phoneNumber, email = "info@lumityo.fi" }) => {
       >
         <Ionicons 
           name="call" 
-          size={24} 
-          color="#fff" 
+          size={24}
+          color="#fff"
           style={styles.contactIcon}
         />
         <Text style={styles.contactButtonText}>Soita</Text>
       </TouchableOpacity>
 
-      {/* Email Button */}
-      <TouchableOpacity 
-        onPress={handleEmailPress}
-        style={[styles.contactButton, styles.emailButton]}
-        activeOpacity={0.8}
-        disabled={!isEmailSupported}
-      >
-        <Ionicons 
-          name="mail" 
-          size={24} 
-          color="#fff" 
-          style={styles.contactIcon}
-        />
-        <Text style={styles.contactButtonText}>Sähköposti</Text>
-      </TouchableOpacity>
+    
     </View>
   );
 };

@@ -42,7 +42,7 @@ const HomeScreen = () => {
 
 
         <View style={styles.menuItemContainer}>
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('omat tiedot')}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Omat tiedot')}>
             <Text style={styles.menuItemText}>Omat tiedot</Text>
           </TouchableOpacity>
         </View>

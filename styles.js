@@ -169,8 +169,9 @@ menuItem1: {
     justifyContent: 'space-between',
     width: '100%',
     paddingHorizontal: 10,
+    borderRadius: 2,
   },
-  
+
   contactButton: {
     flex: 1,
     flexDirection: 'row',

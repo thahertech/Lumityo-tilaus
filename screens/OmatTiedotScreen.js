@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Switch, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Switch, Alert, ScrollView, KeyboardAvoidingView, Platform, Button } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import styles from '../styles';
@@ -60,9 +60,7 @@ const OmatTiedotScreen = () => {
       <ScrollView style={{ flex: 1, backgroundColor: "#000" }} contentContainerStyle={{ padding: 20, justifyContent: "center", alignItems: "center" }}>
         
         {/* Header */}
-        <Text style={[styles.label, { fontSize: 24, textAlign: 'center', marginBottom: 30, color: '#fff' }]}>
-          Omat Tiedot
-        </Text>
+ 
 
         {/* Section 1: User Details */}
         <View style={styles.sectionContainer}>
@@ -134,15 +132,14 @@ const OmatTiedotScreen = () => {
             }
           </Text>
         </View>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionHeader}>Oma Historia</Text>
+        </View>
         <View style={{ height: 40 }} >
         <Text style={{ color: '#fff', fontSize: 12, textAlign: 'center', marginTop: 20 }}>
             Ota yhteyttä 
         </Text>
         </View>
-        
-
-     
-
       </ScrollView>
     </KeyboardAvoidingView>
   );

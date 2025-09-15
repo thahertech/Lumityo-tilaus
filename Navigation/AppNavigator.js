@@ -24,7 +24,7 @@ const AppNavigator = () => (
         name="Tilaus"
         component={OrderScreen}
       />
-      <Stack.Screen name="omat tiedot" component={OmatTiedotScreen} />
+      <Stack.Screen name="Omat tiedot" component={OmatTiedotScreen} />
      
     </Stack.Navigator>
   </NavigationContainer>
