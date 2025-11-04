@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lumityöt",
     "slug": "Lumiwork",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "4",
+      "buildNumber": "5",
       "bundleIdentifier": "com.senseitechh.Lumiwork"
     },
     "android": {
@@ -29,9 +29,6 @@
       "favicon": "./assets/icon.png"
     },
     "extra": {
-      "EMAILJS_SERVICE_ID": "service_dnlb5bk",
-      "EMAILJS_TEMPLATE_ID": "template_za30asu",
-      "EMAILJS_USER_ID": "XwJENMkw3QXVvWHQB",
       "eas": {
         "projectId": "ae040a3f-e178-4831-b486-7415e1a8e042"
       }
