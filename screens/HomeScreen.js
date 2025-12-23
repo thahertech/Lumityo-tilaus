@@ -9,9 +9,10 @@ import heroImage from '../assets/Mountains.jpg';
 import HeaderImage from '../assets/Header.png';
 import NotificationLabel from '../NotificationLabel';
 import JatkuvaTilausStatus from '../JatkuvaTilausStatus';
-import { clearLocalDatabase, getUserProfile, getOrders } from '../LocalDatabase';
+import { getDeviceId } from '../FreeOrderUtils';
+import { hasClaimedFreeOrder, getOrdersByDevice } from '../SupabaseAPI';
+import * as FileSystem from 'expo-file-system';
 
-// Modern production-level button component with animations
 const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -42,7 +43,7 @@ const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle 
       case 'danger':
         return ['#ff4444', '#cc0000'];
       case 'contact':
-        return ['rgba(0, 0, 0, 0.75)', 'rgba(0, 0, 0, 0.85)'];
+        return ['rgba(0, 0, 0, 0.78)', 'rgba(0, 0, 0, 0.85)'];
       default:
         return [theme.colors.primary, theme.colors.primaryDark];
     }
@@ -89,7 +90,7 @@ const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle 
             </View>
             <Ionicons 
               name="chevron-forward" 
-              size={20} 
+              size={30} 
               color={getIconColor()} 
               style={{ opacity: 0.6 }}
             />
@@ -103,21 +104,14 @@ const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle 
 const HomeScreen = () => {
   const phoneNumber = '+358407362403';
   const navigation = useNavigation();
-  const slideAnim = useRef(new Animated.Value(-12000)).current; // Start from left off-screen
+  const slideAnim = useRef(new Animated.Value(-12000)).current;
   const [isEligibleForFree, setIsEligibleForFree] = useState(false);
 
-  // Check if user has any orders
   const checkOrderEligibility = async () => {
     try {
-      const profile = await getUserProfile();
-      if (profile) {
-        const orders = await getOrders(profile.id);
-        // User is eligible for free order if they have no orders yet
-        setIsEligibleForFree(!orders || orders.length === 0);
-      } else {
-        // No profile means no orders, so eligible
-        setIsEligibleForFree(true);
-      }
+      const deviceId = await getDeviceId();
+      const hasFreeOrder = await hasClaimedFreeOrder(deviceId);
+      setIsEligibleForFree(!hasFreeOrder);
     } catch (error) {
       console.error('Error checking order eligibility:', error);
       setIsEligibleForFree(false);
@@ -160,12 +154,48 @@ const HomeScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await clearLocalDatabase();
-              Alert.alert('Onnistui', 'Tietokanta on tyhjennetty.');
-              // Re-check eligibility after clearing
+              // Note: This only shows an alert - data is now in Supabase
+              // To actually delete, would need to delete from Supabase by device_id
+              Alert.alert('Info', 'Tiedot ovat nyt Supabasessa. Ota yhteyttä poistaaksesi ne.');
+              
               checkOrderEligibility();
             } catch (error) {
-              Alert.alert('Virhe', 'Tietokannan tyhjennys epäonnistui.');
+              Alert.alert('Virhe', 'Virhe tarkistettaessa tilauksia.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDatabaseClear = () => {
+    Alert.alert(
+      'Tyhjennä vanha tietokanta',
+      'Haluatko poistaa vanhan SQLite-tietokannan? Tämä poistaa paikallisesti tallennetut tilaukset (uudet tilaukset ovat Supabasessa).',
+      [
+        {
+          text: 'Peruuta',
+          style: 'cancel'
+        },
+        {
+          text: 'Poista SQLite',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const dbPath = `${FileSystem.documentDirectory}SQLite/lumiapp.db`;
+              const fileInfo = await FileSystem.getInfoAsync(dbPath);
+              
+              if (fileInfo.exists) {
+                await FileSystem.deleteAsync(dbPath);
+                Alert.alert('Onnistui', 'SQLite-tietokanta poistettu.');
+              } else {
+                Alert.alert('Info', 'SQLite-tietokantaa ei löytynyt.');
+              }
+              
+              checkOrderEligibility();
+            } catch (error) {
+              console.error('Error deleting SQLite:', error);
+              Alert.alert('Virhe', 'Tietokannan poisto epäonnistui: ' + error.message);
             }
           }
         }
@@ -184,23 +214,18 @@ const HomeScreen = () => {
     <View style={[styles.container, { paddingTop: StatusBar.currentHeight || 0 }]}> 
       <StatusBar barStyle="light-content" translucent={true} />
 
-      {/* Header Images */}
       <Image source={HeaderImage} style={styles.smallerHeaderImage} resizeMode="cover" />
       <Image source={heroImage} style={styles.headerImage} resizeMode="cover" />
 
-      {/* Notification Label */}
       <NotificationLabel />
-      
 
-
-      {/* Free First Order Info Banner - Animated Slide from Left - Only show if eligible */}
       {isEligibleForFree && (
         <Animated.View style={{
           position: 'absolute',
-          top: 375,
+          top: '50%',
           left: 30,
           right: 30,
-          backgroundColor: 'rgba(0, 0, 0, 0.18)',
+          backgroundColor: 'rgba(0, 0, 0, 0.31)',
           borderRadius: 16,
           padding: 16,
           flexDirection: 'row',
@@ -209,7 +234,6 @@ const HomeScreen = () => {
           shadowOffset: { width: 2, height: 4 },
           shadowOpacity: 0.45,
           shadowRadius: 8,
-          elevation: 5,
           zIndex: 1000,
           borderWidth: 2,
           borderColor: '#4c84af56',
@@ -221,7 +245,7 @@ const HomeScreen = () => {
             padding: 10,
             marginRight: 12,
           }}>
-            <Ionicons name="gift" size={28} color="#000000ff" />
+            <Ionicons name="gift" size={28} color="#ffffffff" />
           </View>
           <View style={{ flex: 1}}>
             <Text style={{ 
@@ -242,23 +266,23 @@ const HomeScreen = () => {
           </View>
         </Animated.View>
       )}
-      
-      {/* Modern Menu Buttons */}
+
       <View style={localStyles.menuContainer}>
         <ModernButton 
           title="Tilaa Lumityö" 
           onPress={handleOrderButtonPress}
           iconName="snow"
           variant="primary"
+          subtitle="Luo palvelutilaus tästä"
         />
-        
+
         <ModernButton 
           title="Omat tiedot" 
           onPress={() => navigation.navigate('Profiili')}
           iconName="person-circle-outline"
           variant="secondary"
         />
-        
+
         <ModernButton 
           title="Soita tästä" 
           onPress={handlePhonePress}
@@ -266,11 +290,10 @@ const HomeScreen = () => {
           variant="contact"
         />
       </View>
-     
     </View>
   );
 };
- 
+
 const localStyles = StyleSheet.create({
   menuContainer: {
     position: 'absolute',

@@ -1,19 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 
-// Supabase configuration - using environment variables for security
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+// Supabase configuration - SECURE: using environment variables only
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 
+                     Constants.expoConfig?.extra?.supabaseUrl;
+
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 
+                          Constants.expoConfig?.extra?.supabaseAnonKey;
 
 // Only create client if we have real credentials
 let supabase = null;
-const hasValidCredentials = SUPABASE_URL.includes('supabase.co') && 
-                           SUPABASE_ANON_KEY.length > 50;
+const hasValidCredentials = SUPABASE_URL && SUPABASE_URL.includes('supabase.co') && 
+                           SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.length > 50;
 
 if (hasValidCredentials) {
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log('✅');
+  if (__DEV__) {
+    console.log('✅ Supabase client initialized');
+  }
 } else {
-  console.warn('⚠️ Supabase credentials not configured.');
+  if (__DEV__) {
+    console.warn('⚠️ Supabase credentials not configured');
+  }
 }
 
 /**
@@ -23,10 +31,19 @@ if (hasValidCredentials) {
  */
 const geocodeAddress = async (address) => {
   try {
-    const apiKey = "20082453e8d34c05ac9322861fb028f1"; // Your OpenCage API key
+    const apiKey = process.env.EXPO_PUBLIC_OPENCAGE_API_KEY || 
+                   Constants.expoConfig?.extra?.opencageApiKey;
+    
+    if (!apiKey) {
+      console.warn('⚠️ OpenCage API key not configured');
+      return { lat: null, lon: null };
+    }
+    
     const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}&limit=1`;
     
-    console.log(`🗺️ Geocoding address: ${address}`);
+    if (__DEV__) {
+      console.log(`🗺️ Geocoding address: ${address}`);
+    }
     
     const response = await fetch(url);
     const data = await response.json();

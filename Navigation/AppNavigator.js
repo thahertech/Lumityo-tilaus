@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen';
 import OrderScreen from '../screens/OrderScreen';
 import OmatTiedotScreen from '../screens/OmatTiedotScreen';
@@ -10,58 +11,61 @@ import OrderHistoryScreen from '../screens/ExtraScreen';
 
 const Tab = createBottomTabNavigator();
 
-const AppNavigator = () => (
-  <NavigationContainer>
+const TabNavigator = () => {
+  const insets = useSafeAreaInsets();
+
+  return (
     <Tab.Navigator
       initialRouteName="Koti"
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName = 'ellipsis-horizontal-outline'; 
+          let iconName;
 
-          try {
-
-            switch (route?.name) {
-              case 'Koti':
-                iconName = focused ? 'home' : 'home-outline';
-                break;
-              case 'Tilaus':
-                iconName = focused ? 'snow' : 'snow-outline';
-                break;
-              case 'Historia':
-                iconName = focused ? 'receipt' : 'receipt-outline';
-                break;
-              case 'Profiili':
-                iconName = focused ? 'person' : 'person-outline';
-                break;
-              default:
-                iconName = 'ellipsis-horizontal-outline';
-            }
-            
-            // Additional safety check
-            if (!iconName || typeof iconName !== 'string') {
+          switch (route.name) {
+            case 'Koti':
+              iconName = focused ? 'home' : 'home-outline';
+              break;
+            case 'Tilaus':
+              iconName = focused ? 'snow' : 'snow-outline';
+              break;
+            case 'Historia':
+              iconName = focused ? 'receipt' : 'receipt-outline';
+              break;
+            case 'Profiili':
+              iconName = focused ? 'person' : 'person-outline';
+              break;
+            default:
               iconName = 'ellipsis-horizontal-outline';
-            }
-
-            return <Ionicons name={iconName} size={size || 24} color={color || '#666'} />;
-          } catch (error) {
-            console.warn('Error in tabBarIcon:', error);
-            return <Ionicons name="ellipsis-horizontal-outline" size={24} color="#666" />;
           }
+
+          return (
+            <Ionicons 
+              name={iconName} 
+              size={24} 
+              color={color}
+            />
+          );
         },
         tabBarActiveTintColor: '#4c84af',
         tabBarInactiveTintColor: '#718096',
         tabBarStyle: {
-          backgroundColor: 'rgba(255, 255, 255, 0.98)',
+          backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: 'rgba(76, 132, 175, 0.2)',
-          paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-          paddingTop: 10,
-          height: Platform.OS === 'ios' ? 85 : 70,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom : Math.max(insets.bottom, 5),
+          paddingTop: Platform.OS === 'ios' ? 2 : 5,
+          height: Platform.OS === 'ios' ? 50 + insets.bottom : 60 + Math.max(insets.bottom, 0),
+          elevation: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 16,
+          fontSize: Platform.OS === 'ios' ? 14 : 11,
           fontWeight: '600',
-          marginTop: 4,
+        },
+        tabBarItemStyle: {
+          paddingVertical: Platform.OS === 'ios' ? 0 : 2,
+        },
+        tabBarIconStyle: {
+          marginTop: Platform.OS === 'android' ? 2 : 0,
         },
         headerShown: false,
         gestureEnabled: true,
@@ -89,6 +93,12 @@ const AppNavigator = () => (
         options={{ title: 'Profiili' }}
       />
     </Tab.Navigator>
+  );
+};
+
+const AppNavigator = () => (
+  <NavigationContainer>
+    <TabNavigator />
   </NavigationContainer>
 );
 

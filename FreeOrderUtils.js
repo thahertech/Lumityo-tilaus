@@ -1,5 +1,6 @@
 import * as Application from 'expo-application';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const FREE_ORDER_KEY = 'has_claimed_free_order';
 
@@ -8,25 +9,47 @@ const FREE_ORDER_KEY = 'has_claimed_free_order';
  */
 export const getDeviceId = async () => {
   try {
-    // Try to get Android ID or iOS identifier
-    let deviceId = Application.androidId || await Application.getIosIdForVendorAsync();
+    let deviceId = null;
     
+    // Platform-specific device ID retrieval
+    if (Platform.OS === 'android') {
+      deviceId = Application.androidId;
+    } else if (Platform.OS === 'ios') {
+      deviceId = await Application.getIosIdForVendorAsync();
+    }
+    
+    // If no platform-specific ID, use or generate a persistent one
     if (!deviceId) {
-      // Generate a UUID and store it persistently
       deviceId = await AsyncStorage.getItem('generated_device_id');
       if (!deviceId) {
         deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         await AsyncStorage.setItem('generated_device_id', deviceId);
+        console.log('📱 Generated new device ID:', deviceId);
+      } else {
+        console.log('📱 Using stored device ID:', deviceId);
       }
+    } else {
+      console.log('📱 Platform device ID:', deviceId);
     }
     
-    console.log('📱 Device ID:', deviceId);
     return deviceId;
   } catch (error) {
     console.error('❌ Error getting device ID:', error);
-    // Generate fallback ID
-    const fallbackId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    return fallbackId;
+    // Generate and store fallback ID
+    try {
+      let fallbackId = await AsyncStorage.getItem('generated_device_id');
+      if (!fallbackId) {
+        fallbackId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        await AsyncStorage.setItem('generated_device_id', fallbackId);
+      }
+      console.log('📱 Using fallback device ID:', fallbackId);
+      return fallbackId;
+    } catch (storageError) {
+      // Last resort - generate temporary ID
+      const tempId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      console.warn('⚠️ Using temporary device ID:', tempId);
+      return tempId;
+    }
   }
 };
 

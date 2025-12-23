@@ -9,17 +9,8 @@ import styles from '../styles';
 import { theme, createButtonStyle, createCardStyle } from '../theme';
 import AddressAutocompleteMapboxNew from '../components/AddressAutocompleteMapboxNew';
 import bgImage from '../assets/Mountains.jpg';
-import { 
-  initializeDatabase, 
-  getUserProfile, 
-  updateUserProfile, 
-  createUserProfile,
-  getOrders,
-  getOrderSettings,
-  saveOrderSettings,
-  convertLatestOrderToJatkuva
-} from '../LocalDatabase';
-import { syncOrderToSupabase } from '../SupabaseSync';
+import { getDeviceId } from '../FreeOrderUtils';
+import { getUserProfile, upsertUserProfile, getOrdersByDevice, getOrderSettings, saveOrderSettings } from '../SupabaseAPI';
 
 const OmatTiedotScreen = ({ route }) => {
   const navigation = useNavigation();
@@ -64,8 +55,16 @@ const OmatTiedotScreen = ({ route }) => {
           [{ text: 'Selvä!' }]
         );
       }, 1000); // Small delay to ensure UI has loaded
+    } else if (route?.params?.showJatkuvaTilausInfo) {
+      setTimeout(() => {
+        Alert.alert(
+          'Jatkuva tilaus',
+          'Aktivoi jatkuva tilaus -kytkin alla olevasta asetuksesta. Näin saat automaattisen lumityöpalvelun ilman erillistä tilausta joka kerta.',
+          [{ text: 'Selvä!' }]
+        );
+      }, 500);
     }
-  }, [route?.params?.jatkuvaTilaasEnabled]);
+  }, [route?.params?.jatkuvaTilaasEnabled, route?.params?.showJatkuvaTilausInfo]);
 
   // Reload data when screen comes into focus
   useFocusEffect(
@@ -75,14 +74,15 @@ const OmatTiedotScreen = ({ route }) => {
   );
 
   const initDatabase = async () => {
-    await initializeDatabase();
     await loadUserData();
     await loadOrderHistory();
   };
 
   const loadUserData = async () => {
     try {
-      const profile = await getUserProfile();
+      const deviceId = await getDeviceId();
+      const profile = await getUserProfile(deviceId);
+      
       if (profile) {
         setUserProfile(profile);
         setName(profile.name || '');
@@ -94,14 +94,18 @@ const OmatTiedotScreen = ({ route }) => {
         const hasCompleteData = profile.name && profile.address && profile.phone;
         setIsEditMode(!hasCompleteData);
         
-        // Load order settings
-        const settings = await getOrderSettings(profile.id);
+        // Load order settings - ALWAYS set the switch state, even if no settings exist
+        const settings = await getOrderSettings(deviceId);
         if (settings) {
-          setContinuousOrder(settings.continuous_order === 1);
+          setContinuousOrder(settings.continuous_order === true);
+        } else {
+          // No settings found, default to OFF
+          setContinuousOrder(false);
         }
       } else {
         // No profile exists, start in edit mode
         setIsEditMode(true);
+        setContinuousOrder(false);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -126,169 +130,40 @@ const OmatTiedotScreen = ({ route }) => {
     
     setContinuousOrder(value);
     
-    // Save the toggle state immediately to database
-    if (userProfile?.id) {
-      try {
-        await saveOrderSettings(userProfile.id, {
-          continuousOrder: value,
-          preferredService: 'Lumityö',
-          specialInstructions: null
-        });
+    // Save the toggle state immediately to Supabase
+    try {
+      const deviceId = await getDeviceId();
+      const result = await saveOrderSettings(deviceId, {
+        continuousOrder: value,
+        preferredService: 'Lumityö'
+      });
         
-        // If turning ON jatkuva tilaus, send to Supabase for Map App
-        if (value && name.trim() && address.trim() && phone.trim()) {
-          await sendContinuousOrderToSupabase();
-        }
-        
-        console.log(`🔄 Jatkuva tilaus toggle ${value ? 'enabled' : 'disabled'} and saved immediately`);
-      } catch (error) {
-        console.error('Error saving continuous order setting:', error);
-        Alert.alert('Virhe', 'Asetuksen tallentaminen epäonnistui');
+      if (!result.success) {
+        console.error('❌ Failed to save order settings:', result.error);
+        Alert.alert('Virhe', result.error || 'Asetuksen tallentaminen epäonnistui');
         // Revert the toggle on error
         setContinuousOrder(!value);
+        return;
       }
-    }
-  };
-
-  // Geocode address to get coordinates
-  const geocodeAddress = async (address) => {
-    try {
-      const apiKey = process.env.EXPO_PUBLIC_OPENCAGE_API_KEY;
-      const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}&limit=1`;
       
-      console.log(`🗺️ Geocoding address: ${address}`);
+      console.log(`🔄 Jatkuva tilaus toggle ${value ? 'enabled' : 'disabled'} and saved immediately`);
       
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (data.status.code === 200 && data.results.length > 0) {
-        const result = data.results[0];
-        const lat = result.geometry.lat;
-        const lon = result.geometry.lng;
-        
-        console.log(`✅ Geocoded successfully: ${lat}, ${lon}`);
-        return { lat, lon };
-      } else {
-        console.warn(`❌ Geocoding failed for address: ${address}`);
-        return { lat: null, lon: null };
-      }
+      // Reload order history to reflect the change
+      await loadOrderHistory();
     } catch (error) {
-      console.error('❌ Geocoding error:', error);
-      return { lat: null, lon: null };
-    }
-  };
-
-  const sendContinuousOrderToSupabase = async () => {
-    try {
-      // First geocode the address to get coordinates
-      const coordinates = await geocodeAddress(address.trim());
-      
-      const orderData = {
-        name: name.trim(),
-        phone: phone.trim(),
-        address: address.trim(),
-        email: email.trim() || null, // Include email if provided
-        palvelu: 'Lumityö',
-        price: '20-30€',
-        status: 'jatkuva_tilaus',
-        lat: coordinates.lat,
-        lon: coordinates.lon,
-        info: continuousOrderInfo.trim() || 'Jatkuva tilaus aktivoitu käyttäjän toimesta',
-        jatkuva_tilaus: true
-      };
-
-      console.log('📤 Sending continuous order to Supabase:', orderData);
-
-      const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/rest/v1/snow_orders`, {
-        method: 'POST',
-        headers: {
-          'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify(orderData)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Continuous order sent to Supabase successfully:', result);
-        
-        // Show success message
-        Alert.alert(
-          'Jatkuva tilaus aktivoitu!',
-          `Saat automaattisesti lumityöpalvelua jatkossa.`,
-          [{ text: 'OK' }]
-        );
-      } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error('❌ Error sending continuous order to Supabase:', error);
-      Alert.alert(
-        'Virhe',
-        'Jatkuvan tilauksen lähettäminen epäonnistui. Yritä myöhemmin uudelleen.',
-        [{ text: 'OK' }]
-      );
+      console.error('Error saving continuous order setting:', error);
+      Alert.alert('Virhe', 'Asetuksen tallentaminen epäonnistui');
+      // Revert the toggle on error
+      setContinuousOrder(!value);
     }
   };
 
   const loadOrderHistory = async () => {
     try {
-      const profile = await getUserProfile();
-      if (profile) {
-        // Get local orders
-        const localOrders = await getOrders(profile.id);
-        
-        // Fetch updated statuses from Supabase
-        try {
-          const response = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/rest/v1/snow_orders`, {
-            headers: {
-              'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (response.ok) {
-            const supabaseOrders = await response.json();
-            console.log('📊 Fetched Supabase orders for status sync:', supabaseOrders.length);
-            
-            // Create a lookup map of Supabase orders by matching criteria
-            const supabaseOrderMap = new Map();
-            supabaseOrders.forEach(order => {
-              // Create a unique key based on name, address, and phone
-              const key = `${order.name}-${order.address}-${order.phone}`.toLowerCase();
-              supabaseOrderMap.set(key, order);
-            });
-            
-            // Update local orders with Supabase statuses
-            const updatedOrders = localOrders.map(localOrder => {
-              const key = `${localOrder.name}-${localOrder.address}-${localOrder.phone}`.toLowerCase();
-              const supabaseOrder = supabaseOrderMap.get(key);
-              
-              if (supabaseOrder) {
-                console.log(`✅ Status sync: ${localOrder.service_type} - ${supabaseOrder.status}`);
-                return {
-                  ...localOrder,
-                  status: supabaseOrder.status, // Update status from Supabase
-                  supabase_id: supabaseOrder.id
-                };
-              }
-              
-              return localOrder;
-            });
-            
-            setOrders(updatedOrders);
-          } else {
-            console.warn('⚠️ Failed to fetch Supabase orders, using local only');
-            setOrders(localOrders);
-          }
-        } catch (supabaseError) {
-          console.warn('⚠️ Supabase fetch error, using local orders only:', supabaseError);
-          setOrders(localOrders);
-        }
-      }
+      const deviceId = await getDeviceId();
+      const orders = await getOrdersByDevice(deviceId);
+      setOrders(orders || []);
+      console.log(`📋 Loaded ${orders?.length || 0} orders`);
     } catch (error) {
       console.error('Error loading order history:', error);
     }
@@ -306,41 +181,24 @@ const OmatTiedotScreen = ({ route }) => {
     setIsSaving(true);
     
     try {
-      let profileId = userProfile?.id;
+      const deviceId = await getDeviceId();
       
-      if (profileId) {
-        // Update existing profile
-        const updateResult = await updateUserProfile(profileId, {
-          name,
-          phone,
-          address,
-          email
-        });
-        
-        if (!updateResult.success) {
-          Alert.alert('Virhe', 'Tietojen päivittäminen epäonnistui');
-          return;
-        }
-      } else {
-        // Create new profile
-        const createResult = await createUserProfile({
-          name,
-          phone,
-          address,
-          email
-        });
-        
-        if (!createResult.success) {
-          Alert.alert('Virhe', 'Profiilin luominen epäonnistui');
-          return;
-        }
-        
-        profileId = createResult.profileId;
-        // Reload profile data
-        await loadUserData();
+      // Upsert profile (creates or updates)
+      const result = await upsertUserProfile(deviceId, {
+        name,
+        phone,
+        address,
+        email
+      });
+      
+      if (!result.success) {
+        Alert.alert('Virhe', 'Tietojen tallentaminen epäonnistui');
+        return;
       }
+      
+      setUserProfile(result.profile);
 
-      // Profile data saved successfully - jatkuva tilaus setting is managed separately
+      // Profile data saved successfully
       Alert.alert(
         'Onnistui', 
         'Tiedot tallennettu!',
@@ -446,6 +304,11 @@ const OmatTiedotScreen = ({ route }) => {
         <View style={styles.orderItemHeader}>
           <Ionicons name="snow-outline" size={20} color="#fff" />
           <Text style={styles.orderItemTitle}>{item.service_type}</Text>
+          {item.is_free_order === 1 && (
+            <View style={{ marginLeft: 'auto', backgroundColor: '#4CAF50', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
+              <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>ILMAINEN</Text>
+            </View>
+          )}
         </View>
         <View style={styles.orderItemContent}>
           <View style={styles.orderItemRow}>
@@ -756,7 +619,7 @@ const OmatTiedotScreen = ({ route }) => {
                   lineHeight: 20,
                   fontWeight: '500'
                 }}>
-                  Toivotttavasti olet tyytyväinen palveluun! Kiitos, kun käytät sovellusta.
+                  Toivottavasti olet tyytyväinen palveluun! Kiitos, kun käytät sovellusta.
                 </Text>
               </View>
             </View>

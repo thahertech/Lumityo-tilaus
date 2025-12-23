@@ -299,13 +299,17 @@ const AddressAutocompleteMapbox = ({
     
     // Check if user already typed a street number in their input
     const userInput = (value || '').trim();
-    const hasNumberInInput = /\d/.test(userInput);
+    
+    // Remove any existing postal code and city from the input to avoid duplication
+    // Pattern: ", XXXXX City" or just ", City" at the end
+    const cleanInput = userInput.replace(/,\s*\d{5}\s+\w+\s*$/i, '').replace(/,\s+\w+\s*$/i, '').trim();
+    
+    const hasNumberInInput = /\d/.test(cleanInput);
     
     console.log('🔍 Checking user input for numbers:', {
-      input: userInput,
-      hasNumber: hasNumberInInput,
-      valueType: typeof value,
-      value: value
+      originalInput: userInput,
+      cleanedInput: cleanInput,
+      hasNumber: hasNumberInInput
     });
     
     if (hasNumberInInput) {
@@ -315,11 +319,11 @@ const AddressAutocompleteMapbox = ({
       let extractedNumber = '';
       
       // Try to find the street name in the user input and extract everything after it
-      const streetIndex = userInput.toLowerCase().indexOf(streetName.toLowerCase());
+      const streetIndex = cleanInput.toLowerCase().indexOf(streetName.toLowerCase());
       
       if (streetIndex !== -1) {
         // Extract everything after the street name (this includes apartment numbers)
-        const afterStreet = userInput.substring(streetIndex + streetName.length).trim();
+        const afterStreet = cleanInput.substring(streetIndex + streetName.length).trim();
         if (afterStreet) {
           extractedNumber = afterStreet;
         }
@@ -329,7 +333,7 @@ const AddressAutocompleteMapbox = ({
       if (!extractedNumber) {
         // Look for pattern like: numbers + optional letter + optional space + optional letter + numbers
         // This handles: "49", "49A", "49 B", "49 B 33", "49B33", etc.
-        const numberMatch = userInput.match(/\d+(?:[A-Za-z]|\s+[A-Za-z](?:\s*\d+)?)*$/);
+        const numberMatch = cleanInput.match(/\d+(?:[A-Za-z]|\s+[A-Za-z](?:\s*\d+)?)*$/);
         extractedNumber = numberMatch ? numberMatch[0].trim() : '';
       }
       

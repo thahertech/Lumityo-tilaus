@@ -4,14 +4,38 @@ import { getDeviceId } from './FreeOrderUtils';
 
 const DB_NAME = 'lumityo_local.db';
 
+let dbInstance = null;
+
 const openDB = async () => {
-  return SQLite.openDatabaseAsync(DB_NAME);
+  try {
+    if (dbInstance) {
+      return dbInstance;
+    }
+    dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
+    return dbInstance;
+  } catch (error) {
+    console.error('❌ Error opening database:', error);
+    // Retry once
+    try {
+      dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
+      return dbInstance;
+    } catch (retryError) {
+      console.error('❌ Database retry failed:', retryError);
+      throw retryError;
+    }
+  }
 };
 
 export const initializeDatabase = async () => {
   try {
+    console.log('📂 Initializing database...');
     const db = await openDB();
+    console.log('✅ Database opened successfully');
+    
+    // Execute all table creation in a single transaction for reliability
     await db.execAsync(`
+      PRAGMA journal_mode = WAL;
+      
       CREATE TABLE IF NOT EXISTS user_profiles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -21,8 +45,7 @@ export const initializeDatabase = async () => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
-    `);
-    await db.execAsync(`
+      
       CREATE TABLE IF NOT EXISTS orders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         profile_id INTEGER,
@@ -39,12 +62,12 @@ export const initializeDatabase = async () => {
         work_started_at DATETIME,
         device_id TEXT,
         is_free_order BOOLEAN DEFAULT 0,
+        supabase_id INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         completed_at DATETIME,
         FOREIGN KEY (profile_id) REFERENCES user_profiles (id)
       );
-    `);
-    await db.execAsync(`
+      
       CREATE TABLE IF NOT EXISTS order_settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         profile_id INTEGER,
@@ -56,25 +79,42 @@ export const initializeDatabase = async () => {
         FOREIGN KEY (profile_id) REFERENCES user_profiles (id)
       );
     `);
+    
     console.log('✅ Database initialized successfully');
     return true;
   } catch (error) {
     console.error('❌ Error initializing database:', error);
+    
+    // If it's a column exists error, that's actually OK - database is already set up
+    if (error.message && error.message.includes('duplicate column')) {
+      console.log('ℹ️ Database already initialized with latest schema');
+      return true;
+    }
+    
     return false;
   }
 };
 
 export const createUserProfile = async (profileData) => {
   try {
+    // Ensure DB is initialized before creating profile (CRITICAL for Android)
+    await initializeDatabase();
+    
     const db = await openDB();
     const { name, phone, address, email = null } = profileData;
+    
+    console.log('📝 Creating user profile:', { name, phone, address, hasEmail: !!email });
+    
     const result = await db.runAsync(
       `INSERT INTO user_profiles (name, phone, address, email, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
       [name, phone, address, email]
     );
+    
+    console.log('✅ Profile created successfully, ID:', result.lastInsertRowId);
     return { success: true, profileId: result.lastInsertRowId };
   } catch (error) {
-    return { success: false, error: error.message };
+    console.error('❌ Error creating user profile:', error);
+    return { success: false, error: error.message || 'Database error' };
   }
 };
 
@@ -131,6 +171,17 @@ export const createOrder = async (orderData) => {
     
     if (!supabaseSync.success) {
       console.warn('⚠️ Order saved locally but failed to sync to Supabase:', supabaseSync.error);
+    } else if (supabaseSync.supabaseOrder?.id) {
+      // Store Supabase ID in local database for reliable matching
+      try {
+        await db.runAsync(
+          'UPDATE orders SET supabase_id = ? WHERE id = ?',
+          [supabaseSync.supabaseOrder.id, result.lastInsertRowId]
+        );
+        console.log(`✅ Stored Supabase ID ${supabaseSync.supabaseOrder.id} for local order ${result.lastInsertRowId}`);
+      } catch (updateError) {
+        console.warn('⚠️ Failed to store Supabase ID:', updateError);
+      }
     }
     
     return { success: true, orderId: result.lastInsertRowId, supabaseSync };
@@ -141,6 +192,7 @@ export const createOrder = async (orderData) => {
 
 export const getOrders = async (profileId = null) => {
   try {
+    await initializeDatabase(); // Ensure DB is initialized
     const db = await openDB();
     let query = 'SELECT * FROM orders';
     let params = [];
@@ -149,9 +201,12 @@ export const getOrders = async (profileId = null) => {
       params.push(profileId);
     }
     query += ' ORDER BY created_at DESC';
+    console.log('📊 Fetching orders with query:', query, 'params:', params);
     const result = await db.getAllAsync(query, params);
+    console.log(`📊 Found ${result.length} orders`);
     return result;
   } catch (error) {
+    console.error('❌ Error getting orders:', error);
     return [];
   }
 };
@@ -234,8 +289,21 @@ export const manageContinuousOrder = async (profileId, isEnabled) => {
     const db = await openDB();
     
     // Get user profile to validate required data
-    const profile = await getUserProfile();
+    const profile = await getUserProfile(profileId);
+    console.log('👤 Profile for continuous order:', { 
+      hasProfile: !!profile, 
+      name: profile?.name,
+      address: profile?.address,
+      phone: profile?.phone 
+    });
+    
     if (!profile || !profile.name || !profile.address || !profile.phone) {
+      console.error('❌ Missing profile data:', { 
+        profile: !!profile,
+        name: profile?.name || 'missing',
+        address: profile?.address || 'missing',
+        phone: profile?.phone || 'missing'
+      });
       return { 
         success: false, 
         error: 'Täytä ensin kaikki yhteystiedot (nimi, osoite, puhelinnumero)' 
@@ -251,8 +319,21 @@ export const manageContinuousOrder = async (profileId, isEnabled) => {
 
       if (existingResult) {
         console.log('🔄 Continuous order already exists, no need to create new one');
+        // Still save the setting to ensure it's recorded
+        await saveOrderSettings(profileId, {
+          continuousOrder: true,
+          preferredService: 'Lumityö',
+          specialInstructions: null
+        });
         return { success: true, message: 'Jatkuva tilaus jo olemassa' };
       }
+
+      // Save the enabled setting
+      await saveOrderSettings(profileId, {
+        continuousOrder: true,
+        preferredService: 'Lumityö',
+        specialInstructions: null
+      });
 
       // Create continuous order
       const orderData = {
@@ -271,14 +352,34 @@ export const manageContinuousOrder = async (profileId, isEnabled) => {
       return orderResult;
       
     } else {
-      // Remove continuous order(s)
+      // Save the disabled setting FIRST
+      await saveOrderSettings(profileId, {
+        continuousOrder: false,
+        preferredService: 'Lumityö',
+        specialInstructions: null
+      });
+      
+      // Get the jatkuva tilaus order to find its supabase_id
+      const jatkuvaOrder = await db.getFirstAsync(
+        `SELECT * FROM orders WHERE profile_id = ? AND service_type LIKE '%Jatkuva tilaus%'`,
+        [profileId]
+      );
+      
+      // Remove continuous order(s) from local DB
       await db.runAsync(
         `DELETE FROM orders WHERE profile_id = ? AND service_type LIKE '%Jatkuva tilaus%'`,
         [profileId]
       );
 
-      // Also remove from Supabase
-      await removeContinuousOrderFromSupabase(profile.name, profile.address, profile.phone);
+      // Mark as cancelled in Supabase using supabase_id if available
+      if (jatkuvaOrder?.supabase_id) {
+        console.log(`🔄 Cancelling jatkuva tilaus in Supabase (ID: ${jatkuvaOrder.supabase_id})`);
+        await updateContinuousOrderInSupabaseById(jatkuvaOrder.supabase_id, false);
+      } else {
+        // Fallback to matching by user details (for old orders without supabase_id)
+        console.log('⚠️ No supabase_id found, using fallback matching');
+        await updateContinuousOrderInSupabase(profile.name, profile.address, profile.phone, false);
+      }
       
       return { success: true, message: 'Jatkuva tilaus poistettu' };
     }
@@ -295,6 +396,9 @@ const createContinuousOrder = async (orderData, isJatkuvaTilaus = true) => {
     const db = await openDB();
     const { profileId, serviceType, address, phone, name, priceEstimate, coordinates, info } = orderData;
     
+    // Get device ID for tracking
+    const deviceId = await getDeviceId();
+    
     // Get user's email from profile for Supabase sync
     let userEmail = null;
     try {
@@ -309,13 +413,14 @@ const createContinuousOrder = async (orderData, isJatkuvaTilaus = true) => {
       profileId,
       serviceType,
       isJatkuvaTilaus,
-      hasEmail: !!userEmail
+      hasEmail: !!userEmail,
+      deviceId
     });
     
-    // Save order locally first
+    // Save order locally first with device_id
     const result = await db.runAsync(
-      `INSERT INTO orders (profile_id, service_type, address, phone, name, price_estimate) VALUES (?, ?, ?, ?, ?, ?)`,
-      [profileId, serviceType, address, phone, name, priceEstimate]
+      `INSERT INTO orders (profile_id, service_type, address, phone, name, price_estimate, device_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [profileId, serviceType, address, phone, name, priceEstimate, deviceId]
     );
     
     // Sync to Supabase for MapApp with jatkuva_tilaus flag
@@ -328,11 +433,23 @@ const createContinuousOrder = async (orderData, isJatkuvaTilaus = true) => {
       priceEstimate,
       coordinates,
       info,
-      isJatkuvaTilaus // This will be true for continuous orders
+      isJatkuvaTilaus, // This will be true for continuous orders
+      deviceId // Include device_id in sync
     });
     
     if (!supabaseSync.success) {
       console.warn('⚠️ Continuous order saved locally but failed to sync to Supabase:', supabaseSync.error);
+    } else if (supabaseSync.supabaseOrder?.id) {
+      // CRITICAL: Store Supabase ID in local database for reliable status matching
+      try {
+        await db.runAsync(
+          'UPDATE orders SET supabase_id = ? WHERE id = ?',
+          [supabaseSync.supabaseOrder.id, result.lastInsertRowId]
+        );
+        console.log(`✅ Stored Supabase ID ${supabaseSync.supabaseOrder.id} for continuous order ${result.lastInsertRowId}`);
+      } catch (updateError) {
+        console.warn('⚠️ Failed to store Supabase ID for continuous order:', updateError);
+      }
     }
     
     return { success: true, orderId: result.lastInsertRowId, supabaseSync };
@@ -341,27 +458,71 @@ const createContinuousOrder = async (orderData, isJatkuvaTilaus = true) => {
   }
 };
 
-// Remove continuous order from Supabase
-const removeContinuousOrderFromSupabase = async (name, address, phone) => {
+// Update continuous order in Supabase by ID (preferred method)
+const updateContinuousOrderInSupabaseById = async (supabaseId, isActive) => {
   try {
-    const deleteUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/rest/v1/snow_orders?name=eq.${encodeURIComponent(name)}&address=eq.${encodeURIComponent(address)}&phone=eq.${encodeURIComponent(phone)}&jatkuva_tilaus=eq.true`;
+    const { updateOrderStatusInSupabase } = await import('./SupabaseSync');
     
-    const response = await fetch(deleteUrl, {
-      method: 'DELETE',
+    // Update both status and jatkuva_tilaus flag
+    const updateUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/rest/v1/snow_orders?id=eq.${supabaseId}`;
+    
+    const updateData = {
+      jatkuva_tilaus: isActive,
+      status: isActive ? 'odottaa' : 'peruttu',
+      updated_at: new Date().toISOString()
+    };
+    
+    const response = await fetch(updateUrl, {
+      method: 'PATCH',
       headers: {
         'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(updateData)
     });
     
     if (response.ok) {
-      console.log('✅ Continuous order removed from Supabase');
+      console.log(`✅ Continuous order (ID: ${supabaseId}) ${isActive ? 'activated' : 'cancelled'} in Supabase`);
     } else {
-      console.warn('⚠️ Failed to remove continuous order from Supabase');
+      const errorText = await response.text();
+      console.warn('⚠️ Failed to update continuous order in Supabase:', errorText);
     }
   } catch (error) {
-    console.error('❌ Error removing continuous order from Supabase:', error);
+    console.error('❌ Error updating continuous order by ID in Supabase:', error);
+  }
+};
+
+// Update continuous order in Supabase (mark as cancelled or active) - FALLBACK METHOD
+const updateContinuousOrderInSupabase = async (name, address, phone, isActive) => {
+  try {
+    const updateUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/rest/v1/snow_orders?name=eq.${encodeURIComponent(name)}&address=eq.${encodeURIComponent(address)}&phone=eq.${encodeURIComponent(phone)}&palvelu=eq.${encodeURIComponent('Lumityö - Jatkuva tilaus')}`;
+    
+    const updateData = {
+      jatkuva_tilaus: isActive,
+      status: isActive ? 'odottaa' : 'peruttu'
+    };
+    
+    const response = await fetch(updateUrl, {
+      method: 'PATCH',
+      headers: {
+        'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(updateData)
+    });
+    
+    if (response.ok) {
+      console.log(`✅ Continuous order ${isActive ? 'activated' : 'cancelled'} in Supabase`);
+    } else {
+      const errorText = await response.text();
+      console.warn('⚠️ Failed to update continuous order in Supabase:', errorText);
+    }
+  } catch (error) {
+    console.error('❌ Error updating continuous order in Supabase:', error);
   }
 };
 

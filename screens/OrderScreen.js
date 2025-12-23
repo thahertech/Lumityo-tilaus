@@ -15,13 +15,14 @@ import {
   Dimensions,
   Animated
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import bgImage from '../assets/Mountains.jpg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, createCardStyle } from '../theme';
-import { initializeDatabase, createOrder, getUserProfile, createUserProfile, getOrderSettings, convertLatestOrderToJatkuva } from '../LocalDatabase';
+import { getDeviceId } from '../FreeOrderUtils';
+import { upsertUserProfile, getUserProfile, createSnowOrder, getOrdersByDevice, getOrderSettings, hasClaimedFreeOrder } from '../SupabaseAPI';
 import AddressAutocomplete from '../components/AddressAutocompleteMapboxNew';
 import globalStyles from '../styles';
 
@@ -123,6 +124,10 @@ const AnimatedServiceButton = ({ service, isSelected, onPress }) => {
 const OrderScreen = ({ route }) => {
   const navigation = useNavigation();
   const scrollViewRef = useRef(null);
+  const phoneInputRef = useRef(null);
+  const nameInputRef = useRef(null);
+  const infoInputRef = useRef(null);
+  
   const [isEligibleForFree, setIsEligibleForFree] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -146,47 +151,71 @@ const OrderScreen = ({ route }) => {
     initDatabase();
   }, []);
 
+  // Re-check eligibility when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      checkFreeOrderEligibility();
+    }, [])
+  );
+
+  const checkFreeOrderEligibility = async () => {
+    try {
+      const deviceId = await getDeviceId();
+      const hasFreeOrder = await hasClaimedFreeOrder(deviceId);
+      setIsEligibleForFree(!hasFreeOrder);
+      console.log('🎁 Free order eligibility check:', { 
+        deviceId, 
+        hasFreeOrder, 
+        isEligible: !hasFreeOrder 
+      });
+    } catch (error) {
+      console.error('❌ Error checking free order eligibility:', error);
+      setIsEligibleForFree(false);
+    }
+  };
+
   const initDatabase = async () => {
-    await initializeDatabase();
-    const profile = await getUserProfile();
-    if (profile) {
-      setUserProfile(profile);
-      setFirstName(profile.name || '');
-      setPhoneNumber(profile.phone || '');
-      setAddress(profile.address || '');
+    try {
+      const deviceId = await getDeviceId();
+      console.log('📱 Device ID:', deviceId);
       
-      // Check if user has any orders to determine free eligibility
-      const orders = await getOrders(profile.id);
-      const eligible = !orders || orders.length === 0;
-      setIsEligibleForFree(eligible);
-    } else {
-      // No profile means no orders, so eligible
-      setIsEligibleForFree(true);
+      const profile = await getUserProfile(deviceId);
+      if (profile) {
+        setUserProfile(profile);
+        setFirstName(profile.name || '');
+        setPhoneNumber(profile.phone || '');
+        setAddress(profile.address || '');
+        console.log('✅ Loaded user profile');
+      } else {
+        console.log('ℹ️ No existing profile for device');
+      }
+      
+      // Check eligibility
+      await checkFreeOrderEligibility();
+    } catch (error) {
+      console.error('❌ Error initializing:', error);
     }
   };
 
   const handleServiceSelection = async (service) => {
-    console.log('🔍 Service selection:', service, 'User profile ID:', userProfile?.id);
+    const deviceId = await getDeviceId();
+    console.log('🔍 Service selection:', service, 'Device ID:', deviceId);
     
     // Check if user has jatkuva tilaus active and is trying to select Lumityö
-    if (service === 'Lumityö' && userProfile?.id) {
+    if (service === 'Lumityö' && deviceId) {
       try {
-        const settings = await getOrderSettings(userProfile.id);
+        const settings = await getOrderSettings(deviceId);
         console.log('🔍 Order settings:', settings);
         
-        if (settings && settings.continuous_order === 1) {
+        if (settings && settings.continuous_order === true) {
           console.log('⚠️ User has jatkuva tilaus active, showing alert');
           Alert.alert(
             'Jatkuva tilaus aktiivinen',
-            'Sinulla on jo jatkuva lumityöpalvelu käytössä. Lumityöt tehdään automaattisesti ilman erillistä tilausta kun lunta on satanut riittävästi.\n\nHaluatko silti tehdä ylimääräisen tilauksen?',
+            'Sinulla on jo jatkuva lumityöpalvelu käytössä. Lumityöt tehdään automaattisesti ilman erillistä tilausta kun lunta on satanut riittävästi.',
             [
               {
                 text: 'Peruuta',
                 style: 'cancel'
-              },
-              {
-                text: 'Kyllä, tilaa silti',
-                onPress: () => setSelectedService(service)
               },
               {
                 text: 'Siirry asetuksiin',
@@ -231,57 +260,43 @@ const OrderScreen = ({ route }) => {
 
   const checkAndPromptJatkuvaTilaus = async () => {
     try {
-      const profile = await getUserProfile();
-      if (profile) {
-        const settings = await getOrderSettings(profile.id);
-        // Only prompt if user doesn't already have jatkuva tilaus enabled
-        if (!settings || settings.continuous_order !== 1) {
-          // Check if user has already seen the jatkuva tilaus prompt
-          const hasSeenPrompt = await AsyncStorage.getItem(`jatkuva_prompt_${profile.id}`);
-          
-          if (!hasSeenPrompt) {
-            // Mark that user has seen the prompt
-            await AsyncStorage.setItem(`jatkuva_prompt_${profile.id}`, 'true');
-            
-            Alert.alert(
-              'Hei! Kiinnostaako jatkuva tilaus?',
-              'Säästä aikaa ja vaivaa! Voit asettaa jatkuvan tilauksen Omat tiedot -sivulla. Näin et unohda tilata lumityötä ja saat automaattisen palvelun.',
-              [
-                {
-                  text: 'Ei kiitos',
-                  style: 'cancel',
-                  onPress: () => navigation.navigate('Koti')
-                },
-                {
-                  text: 'Kiinnostaa! →',
-                  onPress: async () => {
-                    try {
-                      // Convert the latest order to jatkuva tilaus and enable the setting
-                      const result = await convertLatestOrderToJatkuva(profile.id);
-                      
-                      if (result.success) {
-                        console.log('✅ Successfully converted order to jatkuva tilaus');
-                        // Navigate to OmatTiedot where the jatkuva tilaus switch will now be ON
-                        navigation.navigate('Profiili', { jatkuvaTilaasEnabled: true });
-                      } else {
-                        console.error('❌ Failed to convert order:', result.error);
-                        // Still navigate to profile even if conversion failed
-                        navigation.navigate('Profiili');
-                      }
-                    } catch (error) {
-                      console.error('❌ Error during jatkuva tilaus conversion:', error);
-                      // Still navigate to profile even if there's an error
-                      navigation.navigate('Profiili');
-                    }
-                  }
-                }
-              ]
-            );
-            return;
-          }
-        }
+      const deviceId = await getDeviceId();
+      const orders = await getOrdersByDevice(deviceId);
+      
+      // Only check for Lumityö orders (not Polanteen poisto)
+      const lumityoOrders = orders.filter(order => order.palvelu === 'Lumityö');
+      
+      console.log('📑 Jatkuva tilaus check:', {
+        totalOrders: orders.length,
+        lumityoOrders: lumityoOrders.length
+      });
+      
+      const settings = await getOrderSettings(deviceId);
+      // Show prompt ONLY after FIRST Lumityö order, if continuous_order not enabled
+      if (lumityoOrders.length === 1 && (!settings || settings.continuous_order !== true)) {
+        console.log('📢 Showing jatkuva tilaus prompt after first Lumityö order');
+        
+        Alert.alert(
+          'Hei! Kiinnostaako jatkuva tilaus?',
+          'Säästä aikaa ja vaivaa! Voit asettaa jatkuvan tilauksen Omat tiedot -sivulla. Näin et unohda tilata lumityötä ja saat automaattisen palvelun.',
+          [
+            {
+              text: 'Ei kiitos',
+              style: 'cancel',
+              onPress: () => navigation.navigate('Koti')
+            },
+            {
+              text: 'Kiinnostaa! →',
+              onPress: () => {
+                // Navigate to OmatTiedot where user can enable jatkuva tilaus
+                navigation.navigate('Profiili', { showJatkuvaTilausInfo: true });
+              }
+            }
+          ]
+        );
+        return;
       }
-      // If user already has jatkuva tilaus, has seen prompt, or no profile, just navigate home
+      // If no prompt needed, just navigate home
       navigation.navigate('Koti');
     } catch (error) {
       console.error('Error checking jatkuva tilaus settings:', error);
@@ -340,30 +355,31 @@ const OrderScreen = ({ route }) => {
     setIsSubmittingOrder(true);
 
     try {
-      // Create or get user profile
-      let profileId = userProfile?.id;
+      const deviceId = await getDeviceId();
+      console.log('📱 Creating order for device:', deviceId);
       
-      if (!profileId) {
-        const profileResult = await createUserProfile({
-          name: firstName,
-          phone: phoneNumber,
-          address: address,
-          email: null
-        });
-        
-        if (!profileResult.success) {
-          Alert.alert('Virhe', 'Profiilia ei voitu luoda.');
-          return;
-        }
-        
-        profileId = profileResult.profileId;
+      // Upsert user profile (will update if exists, create if not)
+      const profileResult = await upsertUserProfile(deviceId, {
+        name: firstName,
+        phone: phoneNumber,
+        address: address,
+        email: null
+      });
+      
+      if (!profileResult.success) {
+        console.error('❌ Profile upsert failed:', profileResult.error);
+        Alert.alert('Virhe', `Profiilia ei voitu tallentaa: ${profileResult.error || 'Tuntematon virhe'}`);
+        return;
       }
+      
+      console.log('✅ Profile saved');
+      setUserProfile(profileResult.profile);
 
       // Check if user has jatkuva tilaus enabled and ONLY apply to Lumityö
       let isJatkuvaTilaus = false;
       if (selectedService === 'Lumityö') {
-        const orderSettings = await getOrderSettings(profileId);
-        isJatkuvaTilaus = orderSettings?.continuous_order === 1;
+        const orderSettings = await getOrderSettings(deviceId);
+        isJatkuvaTilaus = orderSettings?.continuous_order === true;
         
         console.log('🔍 Jatkuva tilaus check:', {
           service: selectedService,
@@ -383,9 +399,8 @@ const OrderScreen = ({ route }) => {
         priceEstimate = selectedService === 'Lumityö' ? '10-20€' : '20-30€';
       }
 
-      // Create order locally and sync to Supabase
-      const orderResult = await createOrder({
-        profileId: profileId,
+      // Create order in Supabase
+      const orderResult = await createSnowOrder(deviceId, {
         serviceType: selectedService,
         address: address,
         phone: phoneNumber,
@@ -393,27 +408,32 @@ const OrderScreen = ({ route }) => {
         priceEstimate: priceEstimate,
         coordinates: addressCoordinates, // Pass coordinates if available
         info: info, // Pass additional information
-        status: 'pending', // Initial status for Map App workflow
         isRecurring: isJatkuvaTilaus, // Pass the jatkuva tilaus flag
         isFreeOrder: isEligibleForFree || false // Mark as free order
       });
 
       if (!orderResult.success) {
-        Alert.alert('Virhe', 'Tilausta ei voitu luoda.');
+        Alert.alert('Virhe', `Tilausta ei voitu luoda: ${orderResult.error}`);
         return;
       }
+      
+      console.log('✅ Order created:', orderResult.order.id);
+      
       Alert.alert(
         'Tilaus Vahvistettu', 
         `Kiitos ${selectedService} tilauksesta!`,
         [
           {
             text: 'OK',
-            onPress: () => {
+            onPress: async () => {
               // Reset form
               setSelectedService(null);
               setInfo('');
-       
               setAddressCoordinates(null);
+              
+              // Re-check free order eligibility after creating order
+              await checkFreeOrderEligibility();
+              
               checkAndPromptJatkuvaTilaus();
             }
           }
@@ -421,7 +441,7 @@ const OrderScreen = ({ route }) => {
       );
 
     } catch (error) {
-      console.error('Error creating order:', error);
+      console.error('❌ Error creating order:', error);
       Alert.alert('Virhe', 'Tilausta ei vahvistettu. Yritä uudelleen.');
     } finally {
       setIsSubmittingOrder(false);
@@ -520,6 +540,7 @@ const OrderScreen = ({ route }) => {
                     <View style={styles.inputContainer}>
                       <Text style={styles.inputLabel}> Puhelinnumero</Text>
                       <TextInput
+                        ref={phoneInputRef}
                         style={styles.input}
                         placeholder="Esim. +358 40 123 4567"
                         placeholderTextColor={theme.colors.textMuted}
@@ -527,7 +548,9 @@ const OrderScreen = ({ route }) => {
                         onChangeText={setPhoneNumber}
                         onFocus={() => scrollToInput('phone')}
                         keyboardType="phone-pad"
+                        returnKeyType="next"
                         blurOnSubmit={false}
+                        onSubmitEditing={() => nameInputRef.current?.focus()}
                         autoComplete="tel"
                         textContentType="telephoneNumber"
                       />
@@ -536,6 +559,7 @@ const OrderScreen = ({ route }) => {
                     <View style={styles.inputContainer}>
                       <Text style={styles.inputLabel}> Nimi</Text>
                       <TextInput
+                        ref={nameInputRef}
                         style={styles.input}
                         placeholder="Etunimi Sukunimi"
                         placeholderTextColor={theme.colors.textMuted}
@@ -544,6 +568,7 @@ const OrderScreen = ({ route }) => {
                         onFocus={() => scrollToInput('name')}
                         returnKeyType="next"
                         blurOnSubmit={false}
+                        onSubmitEditing={() => infoInputRef.current?.focus()}
                         autoComplete="name"
                         textContentType="name"
                       />
@@ -560,6 +585,7 @@ const OrderScreen = ({ route }) => {
                       <Text style={globalStyles.cardHeaderText}>Lisätiedot</Text>
                     </View>
                     <TextInput
+                      ref={infoInputRef}
                       style={[styles.input, styles.textArea]}
                       placeholder="Kerro erityistoiveista tai ohjeista..."
                       placeholderTextColor={theme.colors.textMuted}

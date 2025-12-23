@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getOrders, getUserProfile, clearLocalDatabase } from '../LocalDatabase';
-import { loadOrderHistoryWithSync } from '../utils/OrderHistoryUtils';
+import { getDeviceId } from '../FreeOrderUtils';
+import { getOrdersByDevice } from '../SupabaseAPI';
 import OrderHistoryItem from '../components/OrderHistoryItem';
 import heroImage from '../assets/Mountains.jpg';
 import styles from '../styles';
@@ -26,16 +26,19 @@ const OrderHistoryScreen = () => {
 
   const loadOrders = async () => {
     try {
-      const profile = await getUserProfile();
-      if (profile) {
-        // Use the enhanced order loading with Supabase status sync
-        const fetchedOrders = await loadOrderHistoryWithSync(profile.id, getOrders);
-        setOrders(fetchedOrders || []);
-      } else {
-        setOrders([]);
-      }
+      console.log('📚 Loading order history...');
+      
+      const deviceId = await getDeviceId();
+      console.log('📱 Device ID:', deviceId);
+      
+      // Fetch orders directly from Supabase
+      const fetchedOrders = await getOrdersByDevice(deviceId);
+      console.log(`📋 Loaded ${fetchedOrders?.length || 0} orders from Supabase`);
+      
+      setOrders(fetchedOrders || []);
+      console.log('✅ Orders set in state:', fetchedOrders?.length || 0);
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('❌ Error loading orders:', error);
       setOrders([]);
     }
   };
@@ -46,33 +49,7 @@ const OrderHistoryScreen = () => {
     setRefreshing(false);
   };
 
-  const handleDeleteDB = () => {
-    Alert.alert(
-      '🚨 DEV: Poista tietokanta',
-      'VAROITUS: Tämä poistaa KAIKKI tilaustiedot pysyvästi. Tätä toimintoa ei voi peruuttaa!',
-      [
-        {
-          text: 'Peruuta',
-          style: 'cancel'
-        },
-        {
-          text: 'POISTA KAIKKI',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await clearLocalDatabase();
-              Alert.alert('✅ Onnistui', 'Tietokanta on tyhjennetty.');
-              // Reload orders to show empty state
-              await loadOrders();
-            } catch (error) {
-              console.error('Error clearing database:', error);
-              Alert.alert('❌ Virhe', 'Tietokannan tyhjennys epäonnistui.');
-            }
-          }
-        }
-      ]
-    );
-  };
+
 
   const renderItem = ({ item }) => (
     <OrderHistoryItem item={item} />
@@ -84,7 +61,7 @@ const OrderHistoryScreen = () => {
         <Ionicons name="snow-outline" size={64} color={theme.colors.primary} />
         <Text style={localStyles.emptyTitle}>Ei tilauksia</Text>
         <Text style={localStyles.emptyText}>Sinulla ei ole vielä yhtään tilausta.</Text>
-        <Text style={localStyles.emptySubtext}>Tee ensimmäinen tilauksesi koti-sivulta!</Text>
+        <Text style={localStyles.emptySubtext}>Tee ensimmäinen tilauksesi etusivulta!</Text>
       </View>
     </View>
   );
@@ -93,7 +70,6 @@ const OrderHistoryScreen = () => {
     <View style={localStyles.container}>
       <Image source={heroImage} style={styles.headerImage} resizeMode="cover" />
       
-      {/* Overlay for better text readability */}
       <View style={styles.overlay} />
       
       <View style={localStyles.headerContainer}>
@@ -107,14 +83,7 @@ const OrderHistoryScreen = () => {
               <Ionicons name="refresh-outline" size={16} color="#fff" />
               <Text style={styles.refreshButtonText}>Päivitä</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={localStyles.deleteButton} onPress={handleDeleteDB}>
-              <Ionicons name="trash-outline" size={16} color="#fff" />
-              <Text style={localStyles.deleteButtonText}>DEV: Poista DB</Text>
-            </TouchableOpacity>
           </View>
-          <Text style={localStyles.headerSubtitle}>
-            {orders.length > 0 ? `${orders.length} tilaus${orders.length !== 1 ? 'ta' : ''}` : 'Ei tilauksia'}
-          </Text>
         </View>
       </View>
 
@@ -123,8 +92,8 @@ const OrderHistoryScreen = () => {
           data={orders}
           renderItem={renderItem}
           keyExtractor={(item, index) => item.id ? item.id.toString() : `order-${index}`}
-          contentContainerStyle={{ paddingHorizontal: 0, paddingVertical: 0 }}
-          style={{ paddingHorizontal: 0, marginHorizontal: 0, width: '100%' }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, paddingBottom: 80 }}
+          style={{ width: '100%' }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -151,8 +120,6 @@ const localStyles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-    paddingHorizontal: 0,
-    marginHorizontal: 0,
     width: '100%',
   },
   headerImage: {
@@ -163,7 +130,7 @@ const localStyles = StyleSheet.create({
   headerContainer: {
     paddingTop: 60,
     paddingBottom: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.xl,
     zIndex: 1,
   },
   headerStats: {
@@ -203,7 +170,7 @@ const localStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 0,
+    paddingHorizontal: 16,
     paddingVertical: theme.spacing.xxl * 2,
   },
   emptyCard: {

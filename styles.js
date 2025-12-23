@@ -23,8 +23,10 @@ const styles = StyleSheet.create({
 
   headerImage: {
     width: '100%',
-    height: '100%',
+    height: '110%',
     position: 'absolute',
+    top: 0,
+    bottom: 0,
   },
 
   smallerHeaderImage: {
@@ -375,7 +377,7 @@ menuItem1: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(49, 166, 185, 0.8)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 8,
   },

@@ -5,14 +5,50 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "$EXPO_PUBLIC_SUPABASE_URL",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
+        "EXPO_PUBLIC_OPENCAGE_API_KEY": "$EXPO_PUBLIC_OPENCAGE_API_KEY",
+        "EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN": "$EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN",
+        "EXPO_PUBLIC_EMAILJS_SERVICE_ID": "$EXPO_PUBLIC_EMAILJS_SERVICE_ID",
+        "EXPO_PUBLIC_EMAILJS_TEMPLATE_ID": "$EXPO_PUBLIC_EMAILJS_TEMPLATE_ID",
+        "EXPO_PUBLIC_EMAILJS_USER_ID": "$EXPO_PUBLIC_EMAILJS_USER_ID"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "$EXPO_PUBLIC_SUPABASE_URL",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
+        "EXPO_PUBLIC_OPENCAGE_API_KEY": "$EXPO_PUBLIC_OPENCAGE_API_KEY",
+        "EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN": "$EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN",
+        "EXPO_PUBLIC_EMAILJS_SERVICE_ID": "$EXPO_PUBLIC_EMAILJS_SERVICE_ID",
+        "EXPO_PUBLIC_EMAILJS_TEMPLATE_ID": "$EXPO_PUBLIC_EMAILJS_TEMPLATE_ID",
+        "EXPO_PUBLIC_EMAILJS_USER_ID": "$EXPO_PUBLIC_EMAILJS_USER_ID"
+      }
     },
     "production": {
       "distribution": "store",
-      "releaseChannel": "default"
+      "releaseChannel": "default",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "$EXPO_PUBLIC_SUPABASE_URL",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
+        "EXPO_PUBLIC_OPENCAGE_API_KEY": "$EXPO_PUBLIC_OPENCAGE_API_KEY",
+        "EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN": "$EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN",
+        "EXPO_PUBLIC_EMAILJS_SERVICE_ID": "$EXPO_PUBLIC_EMAILJS_SERVICE_ID",
+        "EXPO_PUBLIC_EMAILJS_TEMPLATE_ID": "$EXPO_PUBLIC_EMAILJS_TEMPLATE_ID",
+        "EXPO_PUBLIC_EMAILJS_USER_ID": "$EXPO_PUBLIC_EMAILJS_USER_ID"
+      }
     }
   },
   "submit": {

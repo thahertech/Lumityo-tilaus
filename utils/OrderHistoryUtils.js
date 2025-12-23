@@ -19,13 +19,11 @@ export const loadOrderHistoryWithSync = async (profileId, getOrders) => {
       urlLength: supabaseUrl?.length || 0
     });
     
-    // Return local orders if no environment variables
     if (!supabaseUrl || !supabaseKey) {
       console.warn('⚠️ Missing Supabase credentials, using local orders only');
       return localOrders;
     }
     
-    // Fetch updated statuses from Supabase
     try {
       const response = await fetch(`${supabaseUrl}/rest/v1/snow_orders`, {
         headers: {
@@ -39,25 +37,52 @@ export const loadOrderHistoryWithSync = async (profileId, getOrders) => {
         const supabaseOrders = await response.json();
         console.log('📊 Fetched Supabase orders for status sync:', supabaseOrders.length);
         
-        // Create a lookup map of Supabase orders by matching criteria
-        const supabaseOrderMap = new Map();
-        supabaseOrders.forEach(order => {
-          // Create a unique key based on name, address, and phone
-          const key = `${order.name}-${order.address}-${order.phone}`.toLowerCase();
-          supabaseOrderMap.set(key, order);
-        });
-        
-        // Update local orders with Supabase statuses
+        // Match orders by Supabase ID first (most reliable), then fall back to other criteria
         const updatedOrders = localOrders.map(localOrder => {
-          const key = `${localOrder.name}-${localOrder.address}-${localOrder.phone}`.toLowerCase();
-          const supabaseOrder = supabaseOrderMap.get(key);
+          let matchingOrder = null;
           
-          if (supabaseOrder) {
-            console.log(`✅ Status sync: ${localOrder.service_type} - ${supabaseOrder.status}`);
+          // Method 1: Match by Supabase ID (most reliable)
+          if (localOrder.supabase_id) {
+            matchingOrder = supabaseOrders.find(so => so.id === localOrder.supabase_id);
+            if (matchingOrder) {
+              console.log(`✅ Status sync (by ID): ${localOrder.service_type} - ${matchingOrder.status}`);
+            }
+          }
+          
+          // Method 2: Match by user details, service type, and approximate time (fallback for old orders)
+          if (!matchingOrder) {
+            const localServiceType = localOrder.service_type || '';
+            const localTime = new Date(localOrder.created_at).getTime();
+            
+            matchingOrder = supabaseOrders.find(supabaseOrder => {
+              const supabaseServiceType = supabaseOrder.palvelu || supabaseOrder.service_type || '';
+              
+              // Match by user details and service type
+              const nameMatch = supabaseOrder.name?.toLowerCase() === localOrder.name?.toLowerCase();
+              const addressMatch = supabaseOrder.address?.toLowerCase() === localOrder.address?.toLowerCase();
+              const phoneMatch = supabaseOrder.phone === localOrder.phone;
+              const userMatches = nameMatch && addressMatch && phoneMatch;
+              
+              const serviceMatches = supabaseServiceType === localServiceType;
+              
+              // Check if timestamps are within 24 hours (to handle timezone differences)
+              const supabaseTime = new Date(supabaseOrder.created_at).getTime();
+              const timeDiff = Math.abs(localTime - supabaseTime);
+              const timeMatches = timeDiff < 86400000; // 24 hours tolerance
+              
+              return userMatches && serviceMatches && timeMatches;
+            });
+            
+            if (matchingOrder) {
+              console.log(`✅ Status sync (by criteria): ${localOrder.service_type} - ${matchingOrder.status}`);
+            }
+          }
+          
+          if (matchingOrder) {
             return {
               ...localOrder,
-              status: supabaseOrder.status, // Update status from Supabase
-              supabase_id: supabaseOrder.id
+              status: matchingOrder.status,
+              supabase_id: matchingOrder.id // Store the ID if we didn't have it
             };
           }
           
