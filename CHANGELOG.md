@@ -28,7 +28,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Removed all hardcoded Supabase credentials from `SupabaseAPI.js` — env-only
 - Removed all hardcoded EmailJS fallbacks from `OmatTiedotScreen.js` — env-only
 - Removed hardcoded Supabase credentials from `utils/OrderHistoryUtils.js` — env-only
-- Removed `expo-sqlite` plugin from `app.config.js` (SQLite no longer used)
+- Removed `expo-sqlite` plugin/dependency and deleted legacy SQLite files (`LocalDatabase.js`, `JatkuvaTilausStatus.js`)
 - Banner reserved slot prevents layout jank when notification appears/disappears
 
 ### Security
