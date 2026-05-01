@@ -12,7 +12,7 @@ export default {
     splash: {
       image: "./assets/splash.png",
       resizeMode: "contain",
-      backgroundColor: "#ffffff"
+      backgroundColor: "#000000"
     },
     ios: {
       supportsTablet: false,
@@ -32,8 +32,7 @@ export default {
     },
     plugins: [
       "expo-asset",
-      "expo-font",
-      "expo-sqlite"
+      "expo-font"
     ],
     assetBundlePatterns: [
       "**/*"

@@ -25,20 +25,15 @@ const OrderHistoryScreen = () => {
   );
 
   const loadOrders = async () => {
-    try {
-      console.log('📚 Loading order history...');
-      
+    try {      
       const deviceId = await getDeviceId();
-      console.log('📱 Device ID:', deviceId);
       
       // Fetch orders directly from Supabase
       const fetchedOrders = await getOrdersByDevice(deviceId);
-      console.log(`📋 Loaded ${fetchedOrders?.length || 0} orders from Supabase`);
       
       setOrders(fetchedOrders || []);
-      console.log('✅ Orders set in state:', fetchedOrders?.length || 0);
     } catch (error) {
-      console.error('❌ Error loading orders:', error);
+      console.error('Error loading orders:', error);
       setOrders([]);
     }
   };
@@ -92,7 +87,7 @@ const OrderHistoryScreen = () => {
           data={orders}
           renderItem={renderItem}
           keyExtractor={(item, index) => item.id ? item.id.toString() : `order-${index}`}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, paddingBottom: 80 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, paddingBottom: 140 }}
           style={{ width: '100%' }}
           refreshControl={
             <RefreshControl
@@ -174,7 +169,7 @@ const localStyles = StyleSheet.create({
     paddingVertical: theme.spacing.xxl * 2,
   },
   emptyCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    backgroundColor: 'rgba(0, 0, 0, 0.98)',
     padding: theme.spacing.xxl,
     borderRadius: theme.borderRadius.xl,
     alignItems: 'center',
@@ -183,13 +178,13 @@ const localStyles = StyleSheet.create({
   },
   emptyTitle: {
     ...theme.typography.h2,
-    color: theme.colors.textPrimary,
+    color: theme.colors.textLight,
     marginBottom: theme.spacing.md,
     textAlign: 'center',
   },
   emptyText: {
     ...theme.typography.bodyLarge,
-    color: theme.colors.textSecondary,
+    color: theme.colors.textLight,
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
@@ -205,6 +200,7 @@ const localStyles = StyleSheet.create({
     padding: theme.spacing.lg,
     borderTopWidth: 1,
     borderColor: theme.colors.glassBorder,
+    bottom: 80,
   },
   bottomLabel: {
     ...theme.typography.body,

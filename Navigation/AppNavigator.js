@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen';
 import OrderScreen from '../screens/OrderScreen';
@@ -39,33 +39,60 @@ const TabNavigator = () => {
           }
 
           return (
-            <Ionicons 
-              name={iconName} 
-              size={24} 
-              color={color}
-            />
+            <View style={[
+              focused && {
+                backgroundColor: 'rgba(76, 132, 175, 0.25)',
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: 'rgba(76, 132, 175, 0.45)',
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+              }
+            ]}>
+              <Ionicons name={iconName} size={24} color={color} />
+            </View>
           );
         },
         tabBarActiveTintColor: '#4c84af',
-        tabBarInactiveTintColor: '#718096',
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(76, 132, 175, 0.2)',
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom : Math.max(insets.bottom, 5),
-          paddingTop: Platform.OS === 'ios' ? 2 : 5,
-          height: Platform.OS === 'ios' ? 50 + insets.bottom : 60 + Math.max(insets.bottom, 0),
+          position: 'absolute',
+          bottom: Platform.OS === 'ios' ? 24 : 16,
+          left: 24,
+          right: 24,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
           elevation: 0,
+          height: 64,
         },
+        tabBarBackground: () => (
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                borderRadius: 32,
+                overflow: 'hidden',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.12)',
+                backgroundColor: 'rgba(15, 23, 42, 0.82)',
+              },
+            ]}
+          />
+        ),
         tabBarLabelStyle: {
-          fontSize: Platform.OS === 'ios' ? 14 : 11,
+          fontSize: 10,
           fontWeight: '600',
+          marginTop: 2,
         },
         tabBarItemStyle: {
-          paddingVertical: Platform.OS === 'ios' ? 0 : 2,
+          height: 64,
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingVertical: 10,
+          flex: 1,
         },
         tabBarIconStyle: {
-          marginTop: Platform.OS === 'android' ? 2 : 0,
+          marginBottom: 0,
         },
         headerShown: false,
         gestureEnabled: true,

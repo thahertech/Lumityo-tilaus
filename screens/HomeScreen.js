@@ -1,20 +1,18 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, TouchableOpacity, Text, Image, StatusBar, Animated, Alert, StyleSheet, Linking, Platform } from 'react-native';
+import { View, TouchableOpacity, Text, Image, StatusBar, Animated, Alert, StyleSheet, Linking, ScrollView, Easing } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import styles from '../styles';
-import { theme } from '../theme';
 import heroImage from '../assets/Mountains.jpg';
 import HeaderImage from '../assets/Header.png';
 import NotificationLabel from '../NotificationLabel';
-import JatkuvaTilausStatus from '../JatkuvaTilausStatus';
 import { getDeviceId } from '../FreeOrderUtils';
-import { hasClaimedFreeOrder, getOrdersByDevice } from '../SupabaseAPI';
-import * as FileSystem from 'expo-file-system';
+import { hasClaimedFreeOrder } from '../SupabaseAPI';
 
-const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle }) => {
+const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle, entranceStyle, glowStyle }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const arrowOpacity = useRef(new Animated.Value(0.65)).current;
+  const arrowTranslateX = useRef(new Animated.Value(0)).current;
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -34,31 +32,60 @@ const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle 
     }).start();
   };
 
-  const getColors = () => {
-    switch (variant) {
-      case 'primary':
-        return [theme.colors.primary, theme.colors.primaryDark];
-      case 'secondary':
-        return ['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.85)'];
-      case 'danger':
-        return ['#ff4444', '#cc0000'];
-      case 'contact':
-        return ['rgba(0, 0, 0, 0.78)', 'rgba(0, 0, 0, 0.85)'];
-      default:
-        return [theme.colors.primary, theme.colors.primaryDark];
+  const isPrimary = variant === 'primary';
+
+  useEffect(() => {
+    if (!isPrimary) {
+      return;
     }
-  };
 
-  const getTextColor = () => {
-    return variant === 'secondary' ? theme.colors.textPrimary : '#fff';
-  };
+    const arrowLoop = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(arrowOpacity, {
+            toValue: 1,
+            duration: 480,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(arrowTranslateX, {
+            toValue: 3,
+            duration: 480,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(arrowOpacity, {
+            toValue: 0.65,
+            duration: 560,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(arrowTranslateX, {
+            toValue: 0,
+            duration: 560,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
 
-  const getIconColor = () => {
-    return variant === 'secondary' ? theme.colors.primary : '#fff';
-  };
+    arrowLoop.start();
+    return () => arrowLoop.stop();
+  }, [isPrimary, arrowOpacity, arrowTranslateX]);
+
+  const getColors = () =>
+    isPrimary
+      ? ['rgba(76, 132, 175, 0.92)', 'rgba(44, 82, 130, 0.92)']
+      : ['rgba(7, 13, 20, 0.58)', 'rgba(7, 13, 20, 0.58)'];
+
+  const textColor = '#f8fafc';
+  const iconColor = isPrimary ? '#ffffff' : '#cfe3f4';
 
   return (
-    <Animated.View style={[localStyles.buttonWrapper, { transform: [{ scale: scaleAnim }] }]}>
+    <Animated.View style={[localStyles.buttonWrapper, entranceStyle, { transform: [{ scale: scaleAnim }] }]}> 
       <TouchableOpacity
         onPress={onPress}
         onPressIn={handlePressIn}
@@ -66,34 +93,42 @@ const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle 
         activeOpacity={0.9}
         accessibilityLabel={title}
       >
+        {glowStyle ? <Animated.View pointerEvents="none" style={[localStyles.buttonGlow, glowStyle]} /> : null}
         <LinearGradient
           colors={getColors()}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={localStyles.buttonGradient}
+          style={[localStyles.buttonGradient, !isPrimary && localStyles.secondaryButtonGradient]}
         >
           <View style={localStyles.buttonContent}>
             {iconName && (
               <View style={localStyles.iconContainer}>
-                <Ionicons name={iconName} size={24} color={getIconColor()} />
+                <Ionicons name={iconName} size={20} color={iconColor} />
               </View>
             )}
             <View style={localStyles.textContainer}>
-              <Text style={[localStyles.buttonTitle, { color: getTextColor() }]}>
+              <Text style={[localStyles.buttonTitle, { color: textColor }]}> 
                 {title}
               </Text>
               {subtitle && (
-                <Text style={[localStyles.buttonSubtitle, { color: getTextColor(), opacity: 0.8 }]}>
+                <Text style={[localStyles.buttonSubtitle, { color: textColor, opacity: 0.8 }]}> 
                   {subtitle}
                 </Text>
               )}
             </View>
-            <Ionicons 
-              name="chevron-forward" 
-              size={30} 
-              color={getIconColor()} 
-              style={{ opacity: 0.6 }}
-            />
+            <Animated.View
+              style={
+                isPrimary
+                  ? { opacity: arrowOpacity, transform: [{ translateX: arrowTranslateX }] }
+                  : { opacity: 0.7 }
+              }
+            >
+              <Ionicons 
+                name="chevron-forward" 
+                size={20} 
+                color={iconColor}
+              />
+            </Animated.View>
           </View>
         </LinearGradient>
       </TouchableOpacity>
@@ -104,7 +139,15 @@ const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle 
 const HomeScreen = () => {
   const phoneNumber = '+358407362403';
   const navigation = useNavigation();
-  const slideAnim = useRef(new Animated.Value(-12000)).current;
+  const bannerOpacity = useRef(new Animated.Value(0)).current;
+  const bannerTranslateY = useRef(new Animated.Value(-6)).current;
+  const bannerScale = useRef(new Animated.Value(0.96)).current;
+  const bannerPulse = useRef(new Animated.Value(0)).current;
+  const hasShownBannerOnce = useRef(false);
+  const buttonAnim1 = useRef(new Animated.Value(0)).current;
+  const buttonAnim2 = useRef(new Animated.Value(0)).current;
+  const buttonAnim3 = useRef(new Animated.Value(0)).current;
+  const primaryGlow = useRef(new Animated.Value(0.35)).current;
   const [isEligibleForFree, setIsEligibleForFree] = useState(false);
 
   const checkOrderEligibility = async () => {
@@ -120,14 +163,127 @@ const HomeScreen = () => {
 
   useEffect(() => {
     checkOrderEligibility();
-    // Slide in from left animation
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      tension: 2,
-      friction: 900,
-      useNativeDriver: true,
-    }).start();
+
+    // Staggered appearance for action buttons.
+    Animated.stagger(90, [
+      Animated.spring(buttonAnim1, {
+        toValue: 1,
+        tension: 70,
+        friction: 16,
+        useNativeDriver: true,
+      }),
+      Animated.spring(buttonAnim2, {
+        toValue: 1,
+        tension: 70,
+        friction: 16,
+        useNativeDriver: true,
+      }),
+      Animated.spring(buttonAnim3, {
+        toValue: 1,
+        tension: 70,
+        friction: 16,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    const glowLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(primaryGlow, {
+          toValue: 0.5,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(primaryGlow, {
+          toValue: 0.35,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    glowLoop.start();
+
+    return () => {
+      glowLoop.stop();
+    };
   }, []);
+
+  useEffect(() => {
+    if (isEligibleForFree) {
+      bannerOpacity.setValue(0);
+      bannerTranslateY.setValue(10);
+      bannerScale.setValue(0.96);
+      bannerPulse.setValue(0);
+
+      const entranceDelay = hasShownBannerOnce.current ? 90 : 500;
+      hasShownBannerOnce.current = true;
+
+      Animated.sequence([
+        Animated.delay(entranceDelay),
+        Animated.parallel([
+          Animated.timing(bannerOpacity, {
+            toValue: 1,
+            duration: 420,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.spring(bannerTranslateY, {
+            toValue: 0,
+            tension: 70,
+            friction: 10,
+            useNativeDriver: true,
+          }),
+          Animated.sequence([
+            Animated.timing(bannerScale, {
+              toValue: 1.02,
+              duration: 180,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.spring(bannerScale, {
+              toValue: 1,
+              tension: 95,
+              friction: 12,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(bannerPulse, {
+              toValue: 0.45,
+              duration: 260,
+              useNativeDriver: true,
+            }),
+            Animated.timing(bannerPulse, {
+              toValue: 0,
+              duration: 520,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+      ]).start();
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(bannerOpacity, {
+        toValue: 0,
+        duration: 180,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(bannerTranslateY, {
+        toValue: -4,
+        duration: 180,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(bannerScale, {
+        toValue: 0.98,
+        duration: 180,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [isEligibleForFree]);
 
   // Re-check eligibility when screen comes into focus
   useFocusEffect(
@@ -140,215 +296,232 @@ const HomeScreen = () => {
     navigation.navigate('Tilaus', { isEligibleForFree });
   };
 
-  const handleDeleteDB = () => {
-    Alert.alert(
-      'Poista tietokanta',
-      'Haluatko varmasti poistaa kaikki tiedot? Tätä toimintoa ei voi peruuttaa.',
-      [
-        {
-          text: 'Peruuta',
-          style: 'cancel'
-        },
-        {
-          text: 'Poista',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Note: This only shows an alert - data is now in Supabase
-              // To actually delete, would need to delete from Supabase by device_id
-              Alert.alert('Info', 'Tiedot ovat nyt Supabasessa. Ota yhteyttä poistaaksesi ne.');
-              
-              checkOrderEligibility();
-            } catch (error) {
-              Alert.alert('Virhe', 'Virhe tarkistettaessa tilauksia.');
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const handleDatabaseClear = () => {
-    Alert.alert(
-      'Tyhjennä vanha tietokanta',
-      'Haluatko poistaa vanhan SQLite-tietokannan? Tämä poistaa paikallisesti tallennetut tilaukset (uudet tilaukset ovat Supabasessa).',
-      [
-        {
-          text: 'Peruuta',
-          style: 'cancel'
-        },
-        {
-          text: 'Poista SQLite',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const dbPath = `${FileSystem.documentDirectory}SQLite/lumiapp.db`;
-              const fileInfo = await FileSystem.getInfoAsync(dbPath);
-              
-              if (fileInfo.exists) {
-                await FileSystem.deleteAsync(dbPath);
-                Alert.alert('Onnistui', 'SQLite-tietokanta poistettu.');
-              } else {
-                Alert.alert('Info', 'SQLite-tietokantaa ei löytynyt.');
-              }
-              
-              checkOrderEligibility();
-            } catch (error) {
-              console.error('Error deleting SQLite:', error);
-              Alert.alert('Virhe', 'Tietokannan poisto epäonnistui: ' + error.message);
-            }
-          }
-        }
-      ]
-    );
-  };
-
   const handlePhonePress = () => {
     const url = `tel:${phoneNumber}`;
-    Linking.openURL(url).catch((err) => {
+    Linking.openURL(url).catch(() => {
       Alert.alert('Virhe', 'Puhelun soittaminen epäonnistui.');
     });
   };
 
+  const makeEntranceStyle = (anim) => ({
+    opacity: anim,
+    transform: [
+      {
+        translateY: anim.interpolate({
+          inputRange: [0, 1],
+              outputRange: [10, 0],
+        }),
+      },
+      {
+        scale: anim.interpolate({
+          inputRange: [0, 1],
+              outputRange: [0.992, 1],
+        }),
+      },
+    ],
+  });
+
   return (
-    <View style={[styles.container, { paddingTop: StatusBar.currentHeight || 0 }]}> 
+    <View style={localStyles.screen}>
       <StatusBar barStyle="light-content" translucent={true} />
 
-      <Image source={HeaderImage} style={styles.smallerHeaderImage} resizeMode="cover" />
-      <Image source={heroImage} style={styles.headerImage} resizeMode="cover" />
+      <Image source={heroImage} style={localStyles.backgroundImage} resizeMode="cover" />
+      <LinearGradient
+        colors={['rgba(5, 12, 20, 0.25)', 'rgba(5, 12, 20, 0.68)', 'rgba(5, 12, 20, 0.95)']}
+        style={localStyles.backgroundOverlay}
+      />
 
       <NotificationLabel />
 
-      {isEligibleForFree && (
-        <Animated.View style={{
-          position: 'absolute',
-          top: '50%',
-          left: 30,
-          right: 30,
-          backgroundColor: 'rgba(0, 0, 0, 0.31)',
-          borderRadius: 16,
-          padding: 16,
-          flexDirection: 'row',
-          alignItems: 'center',
-          shadowColor: '#000000ff',
-          shadowOffset: { width: 2, height: 4 },
-          shadowOpacity: 0.45,
-          shadowRadius: 8,
-          zIndex: 1000,
-          borderWidth: 2,
-          borderColor: '#4c84af56',
-          transform: [{ translateX: slideAnim }],
-        }}>
-          <View style={{
-            backgroundColor: '#4c84af',
-            borderRadius: 12,
-            padding: 10,
-            marginRight: 12,
-          }}>
-            <Ionicons name="gift" size={28} color="#ffffffff" />
-          </View>
-          <View style={{ flex: 1}}>
-            <Text style={{ 
-              color: '#eaeaeaff', 
-              fontWeight: '700', 
-              fontSize: 14,
-              marginBottom: 2,
-            }}>
-              Ensimmäinen tilaus ilmainen😊
-            </Text>
-            <Text style={{ 
-              color: '#f7f7f7ff', 
-              fontWeight: '500', 
-              fontSize: 12,
-            }}>
-              Kokeile palvelua maksutta
-            </Text>
-          </View>
-        </Animated.View>
-      )}
+      <ScrollView
+        contentContainerStyle={localStyles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={localStyles.heroBlock}>
+          <Image source={HeaderImage} style={localStyles.heroLogo} resizeMode="contain" />
+        </View>
 
-      <View style={localStyles.menuContainer}>
-        <ModernButton 
-          title="Tilaa Lumityö" 
-          onPress={handleOrderButtonPress}
-          iconName="snow"
-          variant="primary"
-          subtitle="Luo palvelutilaus tästä"
-        />
+        <View style={localStyles.freeBannerSlot}>
+          <Animated.View
+            pointerEvents={isEligibleForFree ? 'auto' : 'none'}
+            style={[
+              localStyles.freeBanner,
+              {
+                opacity: bannerOpacity,
+                transform: [{ translateY: bannerTranslateY }, { scale: bannerScale }],
+              },
+            ]}
+          >
+            <Animated.View pointerEvents="none" style={[localStyles.freeBannerPulse, { opacity: bannerPulse }]} />
+            <View style={localStyles.freeBannerIcon}>
+              <Ionicons name="gift" size={28} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={localStyles.freeBannerTitle}>Ensimmainen tilaus ilmainen</Text>
+              <Text style={localStyles.freeBannerSubtitle}>Kokeile palvelua maksutta</Text>
+            </View>
+          </Animated.View>
+        </View>
 
-        <ModernButton 
-          title="Omat tiedot" 
-          onPress={() => navigation.navigate('Profiili')}
-          iconName="person-circle-outline"
-          variant="secondary"
-        />
-
-        <ModernButton 
-          title="Soita tästä" 
-          onPress={handlePhonePress}
-          iconName="call"
-          variant="contact"
-        />
-      </View>
+        <View style={localStyles.menuContainer}>
+          <ModernButton
+            title="Tilaa Lumityö"
+            onPress={handleOrderButtonPress}
+            iconName="snow"
+            variant="primary"
+            subtitle="Luo palvelutilaus tästä"
+            entranceStyle={makeEntranceStyle(buttonAnim1)}
+            glowStyle={{ opacity: primaryGlow }}
+          />
+          <ModernButton
+            title="Omat tiedot"
+            onPress={() => navigation.navigate('Profiili')}
+            iconName="person-circle-outline"
+            variant="secondary"
+            subtitle="Päivitä yhteystiedot"
+            entranceStyle={makeEntranceStyle(buttonAnim2)}
+          />
+          <ModernButton
+            title="Soita tästä"
+            onPress={handlePhonePress}
+            iconName="call"
+            variant="secondary"
+            subtitle="Asiakaspalvelu"
+            entranceStyle={makeEntranceStyle(buttonAnim3)}
+          />
+        </View>
+      </ScrollView>
     </View>
   );
 };
 
 const localStyles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#060c14',
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  backgroundOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: 74,
+    paddingBottom: 170,
+  },
+  heroBlock: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+  },
+  heroLogo: {
+    width: 640,
+    height: 246,
+    opacity: 0.97,
+  },
+  freeBannerSlot: {
+    marginHorizontal: 20,
+    marginBottom: 18,
+    minHeight: 82,
+  },
+  freeBanner: {
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    borderRadius: 16,
+    overflow: 'hidden',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.35)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+  },
+  freeBannerPulse: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(125, 186, 236, 0.22)',
+    borderRadius: 16,
+  },
+  freeBannerIcon: {
+    backgroundColor: 'rgba(76, 132, 175, 0.85)',
+    borderRadius: 12,
+    padding: 9,
+    marginRight: 11,
+  },
+  freeBannerTitle: {
+    color: '#f8fafc',
+    fontWeight: '700',
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  freeBannerSubtitle: {
+    color: 'rgba(226, 232, 240, 0.92)',
+    fontWeight: '500',
+    fontSize: 12,
+  },
   menuContainer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 20,
-    right: 20,
+    marginHorizontal: 20,
     gap: 12,
   },
   buttonWrapper: {
     marginBottom: 0,
   },
+  buttonGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    backgroundColor: 'rgba(125, 186, 236, 0.35)',
+    transform: [{ scale: 1.02 }],
+  },
   buttonGradient: {
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.24)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  secondaryButtonGradient: {
+    borderColor: 'rgba(148, 163, 184, 0.28)',
   },
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    minHeight: 72,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    minHeight: 64,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: 'rgba(241, 245, 249, 0.14)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   textContainer: {
     flex: 1,
   },
   buttonTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    letterSpacing: 0.2,
-    marginBottom: 2,
+    letterSpacing: 0.1,
+    marginBottom: 1,
   },
   buttonSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
-    letterSpacing: 0.1,
+    letterSpacing: 0.05,
   },
 });
 

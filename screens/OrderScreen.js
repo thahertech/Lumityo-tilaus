@@ -24,6 +24,7 @@ import { theme, createCardStyle } from '../theme';
 import { getDeviceId } from '../FreeOrderUtils';
 import { upsertUserProfile, getUserProfile, createSnowOrder, getOrdersByDevice, getOrderSettings, hasClaimedFreeOrder } from '../SupabaseAPI';
 import AddressAutocomplete from '../components/AddressAutocompleteMapboxNew';
+import OrderMapPreview from '../components/OrderMapPreview';
 import globalStyles from '../styles';
 
 const { width, height } = Dimensions.get('window');
@@ -85,12 +86,12 @@ const AnimatedServiceButton = ({ service, isSelected, onPress }) => {
 
   const animatedBackgroundColor = glowAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: ['rgba(255, 255, 255, 0.9)', '#4c84af'],
+    outputRange: ['rgba(7, 13, 20, 0.62)', 'rgba(76, 132, 175, 0.92)'],
   });
 
   const animatedBorderColor = glowAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: ['rgba(76, 132, 175, 0.3)', '#2c5282'],
+    outputRange: ['rgba(148, 163, 184, 0.35)', 'rgba(76, 132, 175, 0.95)'],
   });
 
   return (
@@ -133,6 +134,7 @@ const OrderScreen = ({ route }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
   const [addressCoordinates, setAddressCoordinates] = useState(null); // Store lat/lon from address selection
+  const [originalAddressCoordinates, setOriginalAddressCoordinates] = useState(null); // Original geocoded coords before any pin drag
   const [selectedService, setSelectedService] = useState(null);
   const [info, setInfo] = useState('');
 
@@ -305,17 +307,20 @@ const OrderScreen = ({ route }) => {
   };
 
   const handleAddressSelect = (addressData) => {
-    console.log('📍 Address selected:', addressData);
-    setAddressCoordinates({
+    const coords = {
       latitude: addressData.geometry?.lat || null,
       longitude: addressData.geometry?.lng || null,
-    });
-    console.log('📍 Address coordinates set:', {
-      lat: addressData.geometry?.lat,
-      lng: addressData.geometry?.lng,
-      fullAddress: addressData.formatted,
-      katuNumero: addressData.katuNumero
-    });
+    };
+    setAddressCoordinates(coords);
+    setOriginalAddressCoordinates(coords);
+  };
+
+  const handleMapCoordinatesChange = (lat, lon) => {
+    setAddressCoordinates({ latitude: lat, longitude: lon });
+  };
+
+  const handleMapReset = () => {
+    setAddressCoordinates(originalAddressCoordinates);
   };
 
   // Auto scroll to focused input
@@ -430,6 +435,7 @@ const OrderScreen = ({ route }) => {
               setSelectedService(null);
               setInfo('');
               setAddressCoordinates(null);
+              setOriginalAddressCoordinates(null);
               
               // Re-check free order eligibility after creating order
               await checkFreeOrderEligibility();
@@ -535,6 +541,21 @@ const OrderScreen = ({ route }) => {
                         placeholder="Esim. Mannerheimintie 1 A 5"
                         inputStyle={styles.input}
                       />
+                      {addressCoordinates?.latitude && addressCoordinates?.longitude && (
+                        <OrderMapPreview
+                          initialLatitude={originalAddressCoordinates.latitude}
+                          initialLongitude={originalAddressCoordinates.longitude}
+                          address={address}
+                          onCoordinatesChange={handleMapCoordinatesChange}
+                          onReset={
+                            originalAddressCoordinates &&
+                            (addressCoordinates.latitude !== originalAddressCoordinates.latitude ||
+                             addressCoordinates.longitude !== originalAddressCoordinates.longitude)
+                              ? handleMapReset
+                              : undefined
+                          }
+                        />
+                      )}
                     </View>
 
                     <View style={styles.inputContainer}>
@@ -707,10 +728,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16, // Reduced padding
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(7, 13, 20, 0.58)',
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: 'rgba(76, 132, 175, 0.3)',
+    borderColor: 'rgba(148, 163, 184, 0.28)',
     minHeight: 56, // Slightly taller but not massive
     justifyContent: 'center',
     alignItems: 'center',
@@ -735,23 +756,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     textAlign: 'center',
-    color: '#333',
+    color: '#e2e8f0',
   },
   selectedServiceText: {
     color: '#ffffff',
     fontWeight: 'bold',
   },
   serviceDescriptionContainer: {
-    backgroundColor: 'rgba(220, 220, 220, 0.92)',
+    backgroundColor: 'rgba(15, 23, 42, 0.58)',
     padding: 16,
     borderRadius: 12,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: 'rgba(76, 132, 175, 0.81)',
+    borderColor: 'rgba(148, 163, 184, 0.35)',
   },
   serviceDescription: {
     fontSize: 15,
-    color: '#444',
+    color: '#e2e8f0',
     textAlign: 'center',
     lineHeight: 22,
     fontWeight: '500',
@@ -763,7 +784,7 @@ const styles = StyleSheet.create({
   },
   promptText: {
     fontSize: 16,
-    color: '#e8e8e8ff',
+    color: 'rgba(226, 232, 240, 0.9)',
     textAlign: 'center',
     marginTop: 12,
     fontWeight: '500',
@@ -789,12 +810,12 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(15, 23, 42, 0.22)',
     padding: 14, // Reduced padding
     borderRadius: 12,
     fontSize: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    color: '#333',
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    color: '#111827',
     minHeight: 50, // Slightly reduced
     ...Platform.select({
       ios: {

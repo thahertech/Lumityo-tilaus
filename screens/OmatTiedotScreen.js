@@ -243,10 +243,10 @@ const OmatTiedotScreen = ({ route }) => {
 
       // Use the correct EmailJS configuration from environment
       await emailjs.send(
-        process.env.EXPO_PUBLIC_EMAILJS_SERVICE_ID || 'service_kmtdwk8',
-        process.env.EXPO_PUBLIC_EMAILJS_TEMPLATE_ID || 'template_za30asu',
+        process.env.EXPO_PUBLIC_EMAILJS_SERVICE_ID,
+        process.env.EXPO_PUBLIC_EMAILJS_TEMPLATE_ID,
         templateParams,
-        process.env.EXPO_PUBLIC_EMAILJS_USER_ID || 'XwJENMkw3QXVvWHQB'
+        process.env.EXPO_PUBLIC_EMAILJS_USER_ID
       );
 
       Alert.alert(

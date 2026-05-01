@@ -115,6 +115,7 @@ export const syncOrderToSupabase = async (orderData) => {
       jatkuva_tilaus: isJatkuvaTilaus, // Simple subscription flag
       device_id: deviceId || null, // Device tracking for free orders
       is_free_order: isFreeOrder || false, // Free order flag
+      hidden_from_map: isJatkuvaTilaus ? true : false, // Hide new jatkuva_tilaus until Kierros valmis is clicked
       created_at: new Date().toISOString(),
       lat: lat, // Coordinates from selection or geocoding
       lon: lon  // Coordinates from selection or geocoding
