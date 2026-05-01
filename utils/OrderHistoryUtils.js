@@ -5,13 +5,11 @@
 
 export const loadOrderHistoryWithSync = async (profileId, getOrders) => {
   try {
-    // Get local orders
     const localOrders = await getOrders(profileId);
     console.log('📱 Local orders found:', localOrders.length);
     
-    // Check environment variables with fallback
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://xdfjznsmzarzqxfgeogt.supabase.co';
-    const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkZmp6bnNtemFyenF4Zmdlb2d0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3OTI5NDMsImV4cCI6MjA3MzM2ODk0M30.7mX_tGMfM0RN1lxf1catgjOPc9TFSOsIQWHTVBMQy94';
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
     
     console.log('🔐 Environment check:', {
       hasUrl: !!supabaseUrl,
