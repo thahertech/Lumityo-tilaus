@@ -38,8 +38,7 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-font",
-      "expo-sqlite"
+      "expo-font"
     ]
   }
 }

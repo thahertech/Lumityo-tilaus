@@ -1,6 +1,7 @@
 import * as Application from 'expo-application';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { hasClaimedFreeOrder } from './SupabaseAPI';
 
 const FREE_ORDER_KEY = 'has_claimed_free_order';
 
@@ -58,19 +59,13 @@ export const getDeviceId = async () => {
  */
 export const isEligibleForFreeOrder = async () => {
   try {
-    // Import here to avoid circular dependency
-    const { getAllOrders } = await import('./LocalDatabase');
-    
-    // Check local database for any previous orders
-    const previousOrders = await getAllOrders();
-    
-    if (previousOrders && previousOrders.length > 0) {
-      console.log('🚫 Previous orders found:', previousOrders.length);
+    const deviceId = await getDeviceId();
+    if (!deviceId) {
       return false;
     }
-    
-    console.log('✅ Eligible for free order - no previous orders!');
-    return true;
+
+    const claimed = await hasClaimedFreeOrder(deviceId);
+    return !claimed;
   } catch (error) {
     console.error('❌ Error checking free order eligibility:', error);
     // In case of error, default to not eligible to avoid abuse
