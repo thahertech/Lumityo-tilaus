@@ -20,7 +20,7 @@
 
 ## What is this?
 
-**Lumityö-tilaus** is a mobile app for ordering professional snow clearing services in Finland. Customers can place one-time or recurring orders for snow removal and ice clearing — directly from their phone, with real-time address lookup and an interactive map to pin the exact location.
+**Lumityö-tilaus** is a mobile app for ordering professional snow clearing services in Finland. Customers can place one-time or recurring orders for snow removal and ice clearing directly from their phone, with real-time address lookup.
 
 ---
 
@@ -37,11 +37,17 @@
 - **❄️ Snow clearing order** — one-tap order for your address
 - **🧊 Ice removal** — Polanteen poisto service
 - **🔁 Jatkuva tilaus** — recurring automatic service, activated once, runs every snowfall
-- **🗺️ Interactive map** — drag-and-drop pin to confirm exact service location
+- **📍 Current location** — optionally find an order address using the device's foreground location and address lookup; the search can be cancelled, and the address should be checked before ordering
 - **🔔 Free first order** — new users get their first order free
 - **📋 Order history** — track past orders and their statuses synced from Supabase
+- **Order guidance** — required fields show specific errors, successful orders show a confirmation, and history provides retry or order actions where appropriate
+- **Oulu weather forecast** — a compact three-day home-screen widget shows the nearest forecast for today and forecasts around noon for the next two days. A snowflake indicates forecast snowfall at any available hour of the day (for today, the current or upcoming hours); tap a day to see the forecast hours. It uses [Finnish Meteorological Institute open data](https://en.ilmatieteenlaitos.fi/open-data) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). These are forecasts, not observations; no customer location is used. The device connects directly to FMI, which receives its IP address.
+- **👤 Profile details** — contact details can be cleared or left incomplete after disabling any continuous order; existing orders retain their own contact details
 - **📧 Contact form** — send messages directly via EmailJS
+- **Privacy information** — the profile's privacy button is temporarily hidden. Customers can still use the contact form to send a data request; the business must verify and handle it.
 - **📱 Cross-platform** — iOS and Android via Expo
+
+The in-app summary is not a complete privacy notice. Before release, the business must provide an approved notice covering its actual data practices and establish a process for handling deletion requests.
 
 ---
 
@@ -51,7 +57,6 @@
 |-------|------|
 | Framework | React Native + Expo SDK 54 |
 | Backend | Supabase (Postgres + REST API) |
-| Maps | Mapbox (via WebView) |
 | Address Autocomplete | Mapbox Geocoding + OpenCage |
 | Email | EmailJS |
 | Navigation | React Navigation (Bottom Tabs) |
@@ -99,6 +104,8 @@ npx expo start
 
 Press `i` for iOS simulator, `a` for Android emulator, or scan the QR with Expo Go.
 
+The current-location option requires device location permission. Native builds must be rebuilt after adding or changing the location permission configuration.
+
 ---
 
 ## Project Structure
@@ -107,11 +114,11 @@ Press `i` for iOS simulator, `a` for Android emulator, or scan the QR with Expo 
 Lumityö-tilaus-app/
 ├── screens/
 │   ├── HomeScreen.js          # Landing + animated CTA
-│   ├── OrderScreen.js         # Order creation form + map preview
+│   ├── OrderScreen.js         # Order creation form
 │   ├── OmatTiedotScreen.js    # User profile + jatkuva tilaus + history
 │   └── ExtraScreen.js         # Info & extras
 ├── components/
-│   ├── OrderMapPreview.js     # Interactive Mapbox pin (WebView)
+│   ├── OrderMapPreview.js     # Reusable map component (not used by the order form)
 │   └── AddressAutocompleteMapboxNew.js
 ├── Navigation/
 │   └── AppNavigator.js        # Floating transparent tab dock

@@ -46,7 +46,7 @@ export const upsertUserProfile = async (deviceId, profileData) => {
 /**
  * Get user profile by device ID
  */
-export const getUserProfile = async (deviceId) => {
+export const getUserProfile = async (deviceId, { throwOnError = false } = {}) => {
   try {
     const { data, error } = await supabase
       .from('user_profiles')
@@ -61,6 +61,7 @@ export const getUserProfile = async (deviceId) => {
     return data || null;
   } catch (error) {
     console.error('❌ Error fetching profile:', error);
+    if (throwOnError) throw error;
     return null;
   }
 };
@@ -87,7 +88,16 @@ export const createSnowOrder = async (deviceId, orderData) => {
 
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       console.log('🗺️ Order has no valid coordinates; geocoding address');
-      ({ lat: latitude, lon: longitude } = await geocodeAddress(address));
+      try {
+        ({ lat: latitude, lon: longitude } = await geocodeAddress(address));
+      } catch (error) {
+        console.error('Order address geocoding failed:', error);
+      }
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        console.warn('Submitting order without coordinates: address could not be geocoded');
+        latitude = null;
+        longitude = null;
+      }
     }
 
     const { data, error } = await supabase
@@ -122,7 +132,7 @@ export const createSnowOrder = async (deviceId, orderData) => {
 /**
  * Get all orders for device
  */
-export const getOrdersByDevice = async (deviceId) => {
+export const getOrdersByDevice = async (deviceId, { throwOnError = false } = {}) => {
   try {
     const { data, error } = await supabase
       .from('snow_orders')
@@ -135,6 +145,7 @@ export const getOrdersByDevice = async (deviceId) => {
     return data || [];
   } catch (error) {
     console.error('❌ Error fetching orders:', error);
+    if (throwOnError) throw error;
     return [];
   }
 };
@@ -237,7 +248,7 @@ export const saveOrderSettings = async (deviceId, settings) => {
  * Get jatkuva tilaus preference for device
  * Returns true if device has any jatkuva tilaus order
  */
-export const getOrderSettings = async (deviceId) => {
+export const getOrderSettings = async (deviceId, { throwOnError = false } = {}) => {
   try {
     const { data, error } = await supabase
       .from('snow_orders')
@@ -255,6 +266,7 @@ export const getOrderSettings = async (deviceId) => {
     return data && data.length > 0 ? { continuous_order: true } : null;
   } catch (error) {
     console.error('❌ Error fetching jatkuva tilaus:', error);
+    if (throwOnError) throw error;
     return null;
   }
 };

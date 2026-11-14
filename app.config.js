@@ -4,8 +4,7 @@ export default {
   expo: {
     name: "Lumityöt",
     slug: "Lumiwork",
-    version: "2.2.6",
-    sdkVersion: "54.0.0",
+    version: "2.2.7",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -16,7 +15,7 @@ export default {
     },
     ios: {
       supportsTablet: false,
-      buildNumber: "14",
+      buildNumber: "15",
       bundleIdentifier: "com.senseitechh.Lumiwork"
     },
     android: {
@@ -32,7 +31,15 @@ export default {
     },
     plugins: [
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "expo-status-bar",
+      ["expo-location", {
+        locationWhenInUsePermission: "Sijaintiasi käytetään tilauksen osoitteen löytämiseen.",
+        locationAlwaysAndWhenInUsePermission: false,
+        locationAlwaysPermission: false,
+        motionUsagePermission: false,
+        locationFullAccuracyPermission: false
+      }]
     ],
     assetBundlePatterns: [
       "**/*"

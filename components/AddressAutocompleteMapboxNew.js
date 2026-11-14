@@ -1,5 +1,5 @@
-import { theme } from '../theme';
-import React, { useState, useCallback } from 'react';
+import { useTheme } from '../ThemeContext';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   TextInput,
@@ -10,39 +10,56 @@ import {
   Modal,
   Alert,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import Constants from 'expo-constants';
+import { Ionicons } from '@expo/vector-icons';
 
 const AddressAutocompleteMapbox = ({ 
   value, 
   onChangeText, 
   onAddressSelect, 
   onFocus,
-  placeholderTextColor = theme.colors.textMuted,
+  onBlur,
+  accessibilityLabel,
+  accessibilityHint,
+  placeholderTextColor,
   placeholder = "Esim. Kauppakatu 1, Oulu",
   style,
   inputStyle,
+  onUseCurrentLocation,
+  onCancelCurrentLocation,
+  isLocating = false,
+  editable = true,
   maxSuggestions = 5
 }) => {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [suggestions, setSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showKatuNumeroModal, setShowKatuNumeroModal] = useState(false);
   const [selectedStreetSuggestion, setSelectedStreetSuggestion] = useState(null);
   const [katuNumero, setKatuNumero] = useState('');
+  const searchGeneration = useRef(0);
+  const searchTimer = useRef(null);
+
+  useEffect(() => () => {
+    searchGeneration.current += 1;
+    clearTimeout(searchTimer.current);
+  }, []);
 
   // Get API tokens from expo config
   const mapboxToken = Constants.expoConfig?.extra?.mapboxAccessToken || process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const opencageKey = Constants.expoConfig?.extra?.opencageApiKey || process.env.EXPO_PUBLIC_OPENCAGE_API_KEY;
 
 
-  // Debounce function to avoid too many API calls
-  const debounce = (func, delay) => {
-    let timeoutId;
-    return (...args) => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => func.apply(null, args), delay);
-    };
+  const cancelSearch = () => {
+    searchGeneration.current += 1;
+    clearTimeout(searchTimer.current);
+    setIsLoading(false);
+    setSuggestions([]);
+    setShowSuggestions(false);
   };
 
   // Fetch address suggestions from Mapbox with Oulu/Kempele focus
@@ -228,7 +245,7 @@ const AddressAutocompleteMapbox = ({
   };
 
   // Main fetch function that tries Mapbox first, then OpenCage
-  const fetchAddressSuggestions = async (input) => {
+  const fetchAddressSuggestions = async (input, generation) => {
     console.log('🔍 Starting address search for:', input);
     console.log('🔧 API keys check:', {
       mapboxAvailable: !!mapboxToken,
@@ -247,6 +264,7 @@ const AddressAutocompleteMapbox = ({
     try {
       // Try Mapbox first
       const mapboxResults = await fetchMapboxSuggestions(input);
+      if (generation !== searchGeneration.current) return;
       
       if (mapboxResults && mapboxResults.length > 0) {
         console.log(`✅ Using Mapbox results: ${mapboxResults.length} suggestions`);
@@ -256,6 +274,7 @@ const AddressAutocompleteMapbox = ({
         console.log('🔄 Mapbox failed or no results, trying OpenCage...');
         // Fallback to OpenCage
         const opencageResults = await fetchOpenCageSuggestions(input);
+        if (generation !== searchGeneration.current) return;
         
         if (opencageResults.length > 0) {
           console.log(`✅ Using OpenCage results: ${opencageResults.length} suggestions`);
@@ -268,36 +287,29 @@ const AddressAutocompleteMapbox = ({
         }
       }
     } catch (error) {
+      if (generation !== searchGeneration.current) return;
       console.error('❌ Address search error:', error);
       setSuggestions([]);
       setShowSuggestions(false);
     } finally {
-      setIsLoading(false);
+      if (generation === searchGeneration.current) setIsLoading(false);
     }
   };
 
-  // Debounced search function
-  const debouncedFetch = useCallback(
-    debounce(fetchAddressSuggestions, 300),
-    [mapboxToken, opencageKey]
-  );
-
   const handleInputChange = (text) => {
     console.log('🔍 Address input changed:', text);
+    cancelSearch();
     onChangeText(text);
     
     if (text.length >= 2) {
       console.log('🚀 Triggering address suggestions fetch...');
-      debouncedFetch(text);
-    } else {
-      setShowSuggestions(false);
-      setSuggestions([]);
+      const generation = searchGeneration.current;
+      searchTimer.current = setTimeout(() => fetchAddressSuggestions(text, generation), 300);
     }
   };
 
   const handleSuggestionPress = (suggestion) => {
-    setShowSuggestions(false);
-    setSuggestions([]);
+    cancelSearch();
     
     // Check if user already typed a street number in their input
     const userInput = (value || '').trim();
@@ -435,33 +447,40 @@ const AddressAutocompleteMapbox = ({
         <TextInput
           style={[styles.textInput, inputStyle]}
           value={value || ''}
+          editable={editable}
           onChangeText={handleInputChange}
           placeholder={placeholder}
-          placeholderTextColor={placeholderTextColor}
-          onFocus={() => {
+          accessibilityLabel={accessibilityLabel}
+          accessibilityHint={accessibilityHint}
+          placeholderTextColor={placeholderTextColor || theme.colors.inputPlaceholder}
+          onFocus={(event) => {
             setShowSuggestions(suggestions.length > 0);
-            if (onFocus) onFocus();
+            if (onFocus) onFocus(event);
           }}
-          onBlur={() => {
+          onBlur={(event) => {
+            if (onBlur) onBlur(event);
             // Small delay to allow suggestion taps to register before hiding
-            setTimeout(() => setShowSuggestions(false), 200);
+            const generation = searchGeneration.current;
+            setTimeout(() => {
+              if (generation === searchGeneration.current) cancelSearch();
+            }, 200);
           }}
         />
         {isLoading && (
           <ActivityIndicator
             style={styles.loadingIndicator}
             size="small"
-            color={theme.colors.accent}
+            color={theme.colors.controlIcon}
           />
         )}
       </View>
 
-      {showSuggestions && suggestions.length > 0 && (
-        <View style={styles.suggestionsContainer} pointerEvents="auto">
+      {editable && showSuggestions && suggestions.length > 0 && (
+        <View style={styles.suggestionsContainer}>
+          <Text style={styles.suggestionsTitle}>Osoite-ehdotukset</Text>
           <ScrollView
             style={styles.suggestionsList}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="always"
             nestedScrollEnabled={true}
           >
             {suggestions.map((item) => (
@@ -469,14 +488,37 @@ const AddressAutocompleteMapbox = ({
                 key={item.id}
                 style={styles.suggestionItem}
                 onPress={() => handleSuggestionPress(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`Valitse osoite ${item.formatted}`}
               >
-                <Text style={styles.suggestionText} numberOfLines={2}>
-                  {item.formatted}
-                </Text>
+                <Ionicons name="location-outline" size={18} color={theme.colors.textSecondary} />
+                <Text style={styles.suggestionText}>{item.formatted}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
+      )}
+
+      {onUseCurrentLocation && (
+        <TouchableOpacity
+          style={styles.locationButton}
+          onPress={() => {
+            cancelSearch();
+            Keyboard.dismiss();
+            if (isLocating) onCancelCurrentLocation?.();
+            else onUseCurrentLocation();
+          }}
+          disabled={isLocating && !onCancelCurrentLocation}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isLocating && !onCancelCurrentLocation, busy: isLocating }}
+        >
+          {isLocating
+            ? <ActivityIndicator size="small" color={theme.colors.textSecondary} />
+            : <Ionicons name="locate-outline" size={18} color={theme.colors.textSecondary} />}
+          <Text style={styles.locationButtonText}>
+            {isLocating ? 'Peruuta sijainnin haku' : 'Käytä nykyistä sijaintia'}
+          </Text>
+        </TouchableOpacity>
       )}
 
       {/* Katunumero Modal */}
@@ -498,6 +540,7 @@ const AddressAutocompleteMapbox = ({
               value={katuNumero}
               onChangeText={setKatuNumero}
               placeholder="Esim. 5 A 33, 12 B, 15"
+              placeholderTextColor={theme.colors.inputPlaceholder}
               keyboardType="ascii-capable"
               autoFocus={true}
               selectTextOnFocus={true}
@@ -525,7 +568,7 @@ const AddressAutocompleteMapbox = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     position: 'relative',
   },
@@ -538,49 +581,62 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 54,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.controlBorder,
     borderRadius: theme.borderRadius.md,
     paddingHorizontal: 12,
     fontSize: 16,
+    fontFamily: theme.fonts.regular,
     backgroundColor: theme.colors.input,
-    color: theme.colors.textPrimary,
+    color: theme.colors.controlText,
   },
   loadingIndicator: {
     position: 'absolute',
     right: 12,
   },
+  locationButton: {
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    alignSelf: 'flex-start',
+  },
+  locationButtonText: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.medium,
+  },
   suggestionsContainer: {
-    position: 'absolute',
-    top: 58,
-    left: 0,
-    right: 0,
-    backgroundColor: theme.colors.surface,
+    marginTop: 8,
+    backgroundColor: theme.colors.panel,
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderTopWidth: 0,
-    maxHeight: 200,
-    zIndex: 999,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    overflow: 'hidden',
+  },
+  suggestionsTitle: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.semibold,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   suggestionsList: {
-    flex: 1,
+    maxHeight: 200,
   },
   suggestionItem: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.surfaceRaised,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.borderLight,
   },
   suggestionText: {
-    fontSize: 16,
+    ...theme.typography.bodySmall,
     color: theme.colors.textPrimary,
+    flex: 1,
   },
   // Modal styles
   modalOverlay: {
@@ -591,7 +647,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.panel,
     borderRadius: 12,
     padding: 24,
     width: '100%',
@@ -606,28 +662,28 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...theme.typography.h3,
     color: theme.colors.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   modalSubtitle: {
-    fontSize: 16,
+    ...theme.typography.bodySmall,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
   },
   katuNumeroInput: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.controlBorder,
     borderRadius: theme.borderRadius.md,
     padding: 12,
     fontSize: 18,
+    fontFamily: theme.fonts.regular,
     textAlign: 'center',
     marginBottom: 24,
     backgroundColor: theme.colors.input,
-    color: theme.colors.textPrimary,
+    color: theme.colors.controlText,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -643,20 +699,18 @@ const styles = StyleSheet.create({
   cancelButton: {
     backgroundColor: theme.colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.controlBorder,
   },
   confirmButton: {
     backgroundColor: theme.colors.primary,
   },
   cancelButtonText: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    fontWeight: '500',
+    ...theme.typography.label,
+    color: theme.colors.controlText,
   },
   confirmButtonText: {
-    fontSize: 16,
+    ...theme.typography.label,
     color: theme.colors.onPrimary,
-    fontWeight: '600',
   },
 });
 

@@ -26,7 +26,7 @@ export default function NotificationLabel() {
       borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.homeSurface,
       zIndex: 1000,
       paddingVertical: 10,
     },
@@ -37,10 +37,9 @@ export default function NotificationLabel() {
       zIndex: 1000,
     },
     notificationText: {
-      fontSize: 18,
+      ...theme.typography.cardTitle,
       color: theme.colors.textPrimary,
       textAlign: 'center',
-      fontWeight: '600',
     },
   });
 

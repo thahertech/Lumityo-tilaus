@@ -1,4 +1,4 @@
-import { theme } from '../theme';
+import { useTheme } from '../ThemeContext';
 import React, { useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
  *   onReset            {() => void}          – called when user taps "Palauta alkuperäinen"
  */
 const OrderMapPreview = ({ initialLatitude, initialLongitude, address, onCoordinatesChange, onReset }) => {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const webviewRef = useRef(null);
   const mapboxToken =
     Constants.expoConfig?.extra?.mapboxAccessToken ||
@@ -34,7 +36,6 @@ const OrderMapPreview = ({ initialLatitude, initialLongitude, address, onCoordin
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #111111; }
     #map { width: 100%; height: 100vh; }
-    #map canvas { filter: brightness(0.72) saturate(0.9) contrast(1.05); }
 
     .mapboxgl-popup-content {
       background: rgba(24, 24, 24, 0.98) !important;
@@ -71,7 +72,7 @@ const OrderMapPreview = ({ initialLatitude, initialLongitude, address, onCoordin
       el.style.cssText = [
         'width:36px',
         'height:44px',
-        'background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2236%22 height=%2244%22 viewBox=%220 0 36 44%22%3E%3Cpath fill=%224c84af%22 d=%22M18 0C8 0 0 9 0 18c0 11 18 26 18 26S36 29 36 18C36 9 28 0 18 0z%22/%3E%3Ccircle cx=%2218%22 cy=%2218%22 r=%227%22 fill=%22white%22/%3E%3C/svg%3E")',
+        'background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2236%22 height=%2244%22 viewBox=%220 0 36 44%22%3E%3Cpath fill=%22%234c84af%22 stroke=%22white%22 stroke-width=%222%22 d=%22M18 0C8 0 0 9 0 18c0 11 18 26 18 26S36 29 36 18C36 9 28 0 18 0z%22/%3E%3Ccircle cx=%2218%22 cy=%2218%22 r=%227%22 fill=%22white%22/%3E%3C/svg%3E")',
         'background-size:100%',
         'cursor:grab',
       ].join(';');
@@ -119,7 +120,7 @@ const OrderMapPreview = ({ initialLatitude, initialLongitude, address, onCoordin
         <Text style={styles.headerText}>Sijainti kartalla</Text>
         {onReset && (
           <TouchableOpacity onPress={onReset} style={styles.resetBtn}>
-            <Ionicons name="refresh-outline" size={14} color="#A0A0A0" />
+            <Ionicons name="refresh-outline" size={16} color={theme.colors.textPrimary} />
             <Text style={styles.resetText}>Palauta</Text>
           </TouchableOpacity>
         )}
@@ -139,36 +140,27 @@ const OrderMapPreview = ({ initialLatitude, initialLongitude, address, onCoordin
         />
       </View>
       <Text style={styles.hint}>
-        <Ionicons name="information-circle-outline" size={12} color={theme.colors.textMuted} />
+        <Ionicons name="information-circle-outline" size={16} color={theme.colors.textSecondary} />
         {' '}Osoite pysyy samana — vain tarkkaa sijaintia muutetaan
       </Text>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   wrapper: {
     marginTop: 14,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.input,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.12)',
   },
   headerText: {
     flex: 1,
-    color: '#C6C6C6',
-    fontSize: 13,
-    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    ...theme.typography.label,
   },
   resetBtn: {
     flexDirection: 'row',
@@ -176,31 +168,33 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    minHeight: 48,
   },
   resetText: {
-    color: '#A0A0A0',
-    fontSize: 12,
+    color: theme.colors.textSecondary,
+    ...theme.typography.caption,
+    textDecorationLine: 'underline',
   },
   dragHint: {
-    color: '#A0A0A0',
-    fontSize: 12,
-    paddingHorizontal: 12,
+    color: theme.colors.textSecondary,
+    ...theme.typography.caption,
     paddingTop: 8,
     paddingBottom: 6,
   },
   mapContainer: {
     height: 300,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   webview: {
     flex: 1,
     backgroundColor: 'transparent',
   },
   hint: {
-    color: theme.colors.textMuted,
-    fontSize: 11,
-    paddingHorizontal: 12,
+    color: theme.colors.textSecondary,
+    ...theme.typography.caption,
     paddingVertical: 7,
   },
 });
