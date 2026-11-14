@@ -25,12 +25,7 @@ export const getDeviceId = async () => {
       if (!deviceId) {
         deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         await AsyncStorage.setItem('generated_device_id', deviceId);
-        console.log('📱 Generated new device ID:', deviceId);
-      } else {
-        console.log('📱 Using stored device ID:', deviceId);
       }
-    } else {
-      console.log('📱 Platform device ID:', deviceId);
     }
     
     return deviceId;
@@ -43,12 +38,11 @@ export const getDeviceId = async () => {
         fallbackId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         await AsyncStorage.setItem('generated_device_id', fallbackId);
       }
-      console.log('📱 Using fallback device ID:', fallbackId);
       return fallbackId;
     } catch (storageError) {
+      console.warn('⚠️ Using a temporary device ID because storage failed:', storageError);
       // Last resort - generate temporary ID
       const tempId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      console.warn('⚠️ Using temporary device ID:', tempId);
       return tempId;
     }
   }
@@ -79,7 +73,6 @@ export const isEligibleForFreeOrder = async () => {
 export const markFreeOrderClaimed = async () => {
   try {
     await AsyncStorage.setItem(FREE_ORDER_KEY, 'true');
-    console.log('✅ Free order marked as claimed');
   } catch (error) {
     console.error('❌ Error marking free order as claimed:', error);
   }
@@ -92,7 +85,6 @@ export const resetFreeOrderEligibility = async () => {
   try {
     await AsyncStorage.removeItem(FREE_ORDER_KEY);
     await AsyncStorage.removeItem('generated_device_id');
-    console.log('🔄 Free order eligibility reset');
   } catch (error) {
     console.error('❌ Error resetting free order eligibility:', error);
   }

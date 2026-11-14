@@ -96,6 +96,8 @@ EXPO_PUBLIC_OPENCAGE_API_KEY=your_opencage_key
 
 > ⚠️ Never commit `.env` — it is gitignored.
 
+Production EAS builds use the `production` environment configured in Expo. Set all the variables listed above there; do not add literal `$EXPO_PUBLIC_...` references to the production build profile.
+
 ### Run
 
 ```bash
@@ -105,6 +107,8 @@ npx expo start
 Press `i` for iOS simulator, `a` for Android emulator, or scan the QR with Expo Go.
 
 The current-location option requires device location permission. Native builds must be rebuilt after adding or changing the location permission configuration.
+
+Native splash screen settings are in `app.json`; changes require a new native build. Check the splash screen in a release build, since Expo Go and development builds may display it differently.
 
 ---
 

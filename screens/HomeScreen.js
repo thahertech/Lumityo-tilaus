@@ -18,6 +18,10 @@ import snowField from '../assets/home-snowfield.png';
 import snowMountain from '../assets/home-snow-mountain.png';
 import tractorSnow from '../assets/tractor-snowfall.png';
 
+const TRACTOR_OFFSET_Y = 22;
+// The upper edge of the rear wheel in the tractor artwork.
+const WHEEL_TOP_RATIO = 0.4;
+
 function HomeAction({ title, subtitle, icon, onPress, primary, neutral, theme }) {
   const background = primary ? theme.colors.primary : neutral ? '#F5F5F5' : '#151515';
   const foreground = neutral ? '#202020' : theme.colors.onPrimary;
@@ -104,12 +108,12 @@ function AnimatedPromo({ order, eligible, reduceMotion, theme }) {
   );
 }
 
-function TractorAndSnow({ height, width, accumulation, mountain, snowing, forecast }) {
+function TractorAndSnow({ height, width, accumulation, snowing, forecast, onTractorLayout }) {
   const imageHeight = Math.min(240, Math.max(170, height * 0.25));
   const imageWidth = Math.min(Math.max(0, Math.min(width, 600) - 40) * 1.65, 850, imageHeight * 724 / 241);
 
   return (
-    <View style={styles.hero}>
+    <View style={styles.hero} onLayout={({ nativeEvent: { layout } }) => onTractorLayout('hero', layout)}>
       {accumulation && <Animated.Image
         pointerEvents="none"
         source={snowField}
@@ -120,14 +124,12 @@ function TractorAndSnow({ height, width, accumulation, mountain, snowing, foreca
         }]}
       />}
       <View pointerEvents="box-none" style={styles.weatherSpace}>
-        {mountain && <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.weatherSnowShade, {
-          opacity: mountain.interpolate({ inputRange: [0, 0.5, 0.8, 1], outputRange: [0, 0, 0.8, 0.8] }),
-        }]} />}
         <OuluWeatherBadge forecast={forecast} />
       </View>
-      <View style={styles.heroArtwork}>
-        <View style={[styles.tractor, { height: imageHeight }]} accessible accessibilityLabel="Lumityötä tekevä traktori">
-          <View style={[styles.tractorArtboard, { width: imageWidth }]}>
+      <View style={styles.heroArtwork} onLayout={({ nativeEvent: { layout } }) => onTractorLayout('artwork', layout)}>
+        <View style={[styles.tractor, { height: imageHeight }]} accessible accessibilityLabel="Lumityötä tekevä traktori"
+          onLayout={({ nativeEvent: { layout } }) => onTractorLayout('tractor', layout)}>
+          <View style={[styles.tractorArtboard, { width: imageWidth }]} onLayout={({ nativeEvent: { layout } }) => onTractorLayout('image', layout)}>
             <Image pointerEvents="none" source={tractorGround} style={styles.tractorGround} resizeMode="stretch" />
             <Image source={tractor} style={styles.tractorImage} resizeMode="contain" />
             {accumulation && <Animated.Image pointerEvents="none" source={tractorSnow} resizeMode="stretch" style={[styles.tractorSnow, { opacity: accumulation }]} />}
@@ -139,7 +141,7 @@ function TractorAndSnow({ height, width, accumulation, mountain, snowing, foreca
   );
 }
 
-function SnowMountain({ height, progress }) {
+function SnowMountain({ height, progress, maxHeight }) {
   const mountainHeight = height * 0.88;
   return (
     <Animated.View
@@ -149,7 +151,7 @@ function SnowMountain({ height, progress }) {
       style={[styles.snowMountain, {
         height: mountainHeight,
         transform: [
-          { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [mountainHeight, 0] }) },
+          { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [mountainHeight, mountainHeight - maxHeight] }) },
           { translateX: progress.interpolate({
             inputRange: [0, 0.2, 0.4, 0.6, 0.8, 1],
             outputRange: [0, -8, 7, -6, 8, 0],
@@ -171,15 +173,34 @@ export default function HomeScreen() {
   const [reduceMotion, setReduceMotion] = useState(null);
   const [needsProfile, setNeedsProfile] = useState(null);
   const [homeHeight, setHomeHeight] = useState(0);
+  const [tractorLayout, setTractorLayout] = useState({});
+  const [scrollY, setScrollY] = useState(0);
   const forecast = useOuluForecast();
   const { accumulation, mountain, snowing } = useHomeSnow(reduceMotion);
   const setNavigationSnow = useContext(HomeSnowContext);
+  const updateTractorLayout = useCallback((part, layout) => {
+    setTractorLayout((current) => {
+      const previous = current[part];
+      if (previous?.y === layout.y && previous?.height === layout.height) return current;
+      return { ...current, [part]: { y: layout.y, height: layout.height } };
+    });
+  }, []);
+  const mountainHeight = homeHeight * 0.88;
+  const hasSnowToday = Array.isArray(forecast?.days[0]?.snowTimes) && forecast.days[0].snowTimes.length > 0;
+  const { hero, artwork, tractor: tractorFrame, image } = tractorLayout;
+  const wheelTop = hero && artwork && tractorFrame && image
+    ? hero.y + artwork.y + tractorFrame.y + TRACTOR_OFFSET_Y + image.y + image.height * WHEEL_TOP_RATIO - scrollY
+    : null;
+  const maxMountainHeight = hasSnowToday
+    ? mountainHeight
+    : wheelTop === null ? 0 : Math.max(0, Math.min(mountainHeight, homeHeight - wheelTop));
+  const hasVisibleMountain = maxMountainHeight > 0;
 
   useEffect(() => {
     if (!setNavigationSnow) return undefined;
-    setNavigationSnow(mountain);
+    setNavigationSnow(hasVisibleMountain ? mountain : null);
     return () => setNavigationSnow(null);
-  }, [mountain, setNavigationSnow]);
+  }, [mountain, setNavigationSnow, hasVisibleMountain]);
 
   useEffect(() => {
     let active = true;
@@ -238,16 +259,17 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.screen} onLayout={({ nativeEvent: { layout } }) => setHomeHeight(layout.height)}>
-      {homeHeight > 0 && <SnowMountain height={homeHeight} progress={mountain} />}
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + SCREEN_TOP_SPACING }]} showsVerticalScrollIndicator={false}>
+      {homeHeight > 0 && <SnowMountain height={homeHeight} progress={mountain} maxHeight={maxMountainHeight} />}
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + SCREEN_TOP_SPACING }]} showsVerticalScrollIndicator={false}
+        onScroll={({ nativeEvent: { contentOffset } }) => setScrollY(contentOffset.y)} scrollEventThrottle={32}>
         <NotificationLabel />
         <AnimatedPromo order={order} eligible={eligible} reduceMotion={reduceMotion} theme={theme} />
         <TractorAndSnow
           height={height}
           width={width}
           accumulation={accumulation}
-          mountain={mountain}
           forecast={forecast}
+          onTractorLayout={updateTractorLayout}
           snowing={snowing && forecast?.days[0]?.snow === true}
         />
         <View style={styles.actions}>
@@ -267,10 +289,9 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingBottom: 24, width: '100%', maxWidth: 600, alignSelf: 'center' },
   hero: { flexGrow: 1, marginHorizontal: 20, paddingBottom: 46, alignItems: 'center' },
   weatherSpace: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2 },
-  weatherSnowShade: { backgroundColor: '#18232C', borderRadius: 14 },
   heroArtwork: { flexGrow: 1, width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
   snowField: { position: 'absolute', bottom: 0, width: '120%', height: 150 },
-  tractor: { width: '165%', maxWidth: 850, alignItems: 'center', justifyContent: 'center', transform: [{ translateY: 22 }] },
+  tractor: { width: '165%', maxWidth: 850, alignItems: 'center', justifyContent: 'center', transform: [{ translateY: TRACTOR_OFFSET_Y }] },
   tractorArtboard: { aspectRatio: 724 / 241 },
   tractorImage: { width: '100%', height: '100%' },
   tractorGround: { position: 'absolute', top: 0, width: '100%', height: '106.224%' },

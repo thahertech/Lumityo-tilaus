@@ -8,7 +8,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const emailjs = require('emailjs');
 
-
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -20,11 +19,9 @@ const userID = process.env.EMAILJS_USER_ID;
 
 emailjs.send(serviceID, templateID, templateParams, userID)
   .then((response) => {
-    console.log('SUCCESS!', response.status, response.text);
   }, (err) => {
     console.error('FAILED...', err);
   });
-
 
 app.use(bodyParser.json());
 
@@ -47,12 +44,10 @@ app.post('/send-email', (req, res) => {
       console.error('Error sending email:', error);
       res.status(500).json({ success: false, error: error.message });
     } else {
-      console.log('Email sent successfully:', message);
       res.status(200).json({ success: true });
     }
   });
 });
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
 });

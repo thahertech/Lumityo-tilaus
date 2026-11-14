@@ -53,7 +53,6 @@ const AddressAutocompleteMapbox = ({
   const mapboxToken = Constants.expoConfig?.extra?.mapboxAccessToken || process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const opencageKey = Constants.expoConfig?.extra?.opencageApiKey || process.env.EXPO_PUBLIC_OPENCAGE_API_KEY;
 
-
   const cancelSearch = () => {
     searchGeneration.current += 1;
     clearTimeout(searchTimer.current);
@@ -64,8 +63,6 @@ const AddressAutocompleteMapbox = ({
 
   // Fetch address suggestions from Mapbox with Oulu/Kempele focus
   const fetchMapboxSuggestions = async (input) => {
-    console.log('🗺️ Fetching Mapbox suggestions for:', input);
-    
     if (!mapboxToken) {
       console.warn('⚠️ No Mapbox token available');
       return null;
@@ -82,18 +79,8 @@ const AddressAutocompleteMapbox = ({
         `limit=${Math.max(maxSuggestions * 2, 10)}&` + // Get more results to filter
         `language=fi&` +
         `types=address,poi`;
-
-      console.log('🌐 Mapbox API request:', url.replace(mapboxToken, '[TOKEN]'));
-      
       const response = await fetch(url);
       const data = await response.json();
-      
-      console.log('📊 Mapbox response:', {
-        status: response.status,
-        features: data.features?.length || 0,
-        query: data.query
-      });
-
       if (data.features && data.features.length > 0) {
         const suggestions = data.features
           .filter(feature => {
@@ -104,21 +91,6 @@ const AddressAutocompleteMapbox = ({
             // Check if it's a Finnish address
             const isFinland = placeName.includes('finland') || placeName.includes('suomi') ||
                              context.some(ctx => ctx.text?.toLowerCase().includes('finland'));
-            
-            // Priority scoring: Oulu/Kempele get higher priority
-            const isOuluKempele = placeName.includes('oulu') || 
-                                  placeName.includes('kempele') ||
-                                  context.some(ctx => 
-                                    ctx.text?.toLowerCase().includes('oulu') ||
-                                    ctx.text?.toLowerCase().includes('kempele')
-                                  );
-            
-            console.log('🏠 Address filter:', {
-              place: feature.place_name,
-              isFinland,
-              isOuluKempele,
-              context: context.map(c => c.text)
-            });
             
             return isFinland; // Accept all Finnish addresses
           })
@@ -166,8 +138,6 @@ const AddressAutocompleteMapbox = ({
               mapboxFeature: feature
             };
           });
-
-        console.log(`✅ Mapbox found ${suggestions.length} Oulu/Kempele addresses`);
         return suggestions;
       }
       
@@ -180,8 +150,6 @@ const AddressAutocompleteMapbox = ({
 
   // Fallback to OpenCage API
   const fetchOpenCageSuggestions = async (input) => {
-    console.log('🌍 Fetching OpenCage suggestions for:', input);
-    
     if (!opencageKey) {
       console.warn('⚠️ No OpenCage API key available');
       return [];
@@ -195,9 +163,6 @@ const AddressAutocompleteMapbox = ({
       
       const response = await fetch(url);
       const data = await response.json();
-      
-      console.log('📊 OpenCage response status:', data.status?.code);
-
       if (data.results) {
         const suggestions = data.results
           .filter(result => {
@@ -232,8 +197,6 @@ const AddressAutocompleteMapbox = ({
               }
             };
           });
-
-        console.log(`✅ OpenCage found ${suggestions.length} suggestions`);
         return suggestions;
       }
       
@@ -246,14 +209,7 @@ const AddressAutocompleteMapbox = ({
 
   // Main fetch function that tries Mapbox first, then OpenCage
   const fetchAddressSuggestions = async (input, generation) => {
-    console.log('🔍 Starting address search for:', input);
-    console.log('🔧 API keys check:', {
-      mapboxAvailable: !!mapboxToken,
-      opencageAvailable: !!opencageKey
-    });
-    
     if (!input || input.length < 3) {
-      console.log('⚠️ Input too short, clearing suggestions');
       setSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -267,21 +223,17 @@ const AddressAutocompleteMapbox = ({
       if (generation !== searchGeneration.current) return;
       
       if (mapboxResults && mapboxResults.length > 0) {
-        console.log(`✅ Using Mapbox results: ${mapboxResults.length} suggestions`);
         setSuggestions(mapboxResults);
         setShowSuggestions(true);
       } else {
-        console.log('🔄 Mapbox failed or no results, trying OpenCage...');
         // Fallback to OpenCage
         const opencageResults = await fetchOpenCageSuggestions(input);
         if (generation !== searchGeneration.current) return;
         
         if (opencageResults.length > 0) {
-          console.log(`✅ Using OpenCage results: ${opencageResults.length} suggestions`);
           setSuggestions(opencageResults);
           setShowSuggestions(true);
         } else {
-          console.log('❌ No results from either API');
           setSuggestions([]);
           setShowSuggestions(false);
         }
@@ -297,12 +249,10 @@ const AddressAutocompleteMapbox = ({
   };
 
   const handleInputChange = (text) => {
-    console.log('🔍 Address input changed:', text);
     cancelSearch();
     onChangeText(text);
     
     if (text.length >= 2) {
-      console.log('🚀 Triggering address suggestions fetch...');
       const generation = searchGeneration.current;
       searchTimer.current = setTimeout(() => fetchAddressSuggestions(text, generation), 300);
     }
@@ -319,13 +269,6 @@ const AddressAutocompleteMapbox = ({
     const cleanInput = userInput.replace(/,\s*\d{5}\s+\w+\s*$/i, '').replace(/,\s+\w+\s*$/i, '').trim();
     
     const hasNumberInInput = /\d/.test(cleanInput);
-    
-    console.log('🔍 Checking user input for numbers:', {
-      originalInput: userInput,
-      cleanedInput: cleanInput,
-      hasNumber: hasNumberInInput
-    });
-    
     if (hasNumberInInput) {
       // User already typed a number, extract it and use directly
       // Updated logic to handle apartment numbers like "49 B 33" or "49B33"
@@ -350,9 +293,6 @@ const AddressAutocompleteMapbox = ({
         const numberMatch = cleanInput.match(/\d+(?:[A-Za-z]|\s+[A-Za-z](?:\s*\d+)?)*$/);
         extractedNumber = numberMatch ? numberMatch[0].trim() : '';
       }
-      
-      console.log('📝 Number found in input:', extractedNumber);
-      
       // Construct final address immediately
       const streetWithNumber = extractedNumber ? 
         `${suggestion.address} ${extractedNumber}` : 
@@ -409,15 +349,6 @@ const AddressAutocompleteMapbox = ({
     
     // Full address for Supabase (complete information)
     const fullAddress = displayAddress;
-    
-    console.log('📍 Final address constructed:', {
-      streetWithNumber,
-      postalCode,
-      city,
-      displayAddress,
-      fullAddress
-    });
-    
     onChangeText(displayAddress);
     setShowKatuNumeroModal(false);
     setKatuNumero('');

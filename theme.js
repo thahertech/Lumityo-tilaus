@@ -32,7 +32,7 @@ export const lightTheme = {
   colors: {
     accent: '#FFFFFF', onPrimary: '#FFFFFF', primary: '#28669B', primaryDark: '#20547F', primaryLight: '#FFFFFF',
     background: '#171717', surface: 'rgba(255, 255, 255, 0.22)', surfaceRaised: '#F7F7F7',
-    panel: '#303030', homeSurface: 'rgba(20, 20, 20, 0.84)', input: '#E8E8E8', orderSurface: '#E8E8E8', inputDisabled: '#E9E9E9', overlay: 'rgba(0, 0, 0, 0.72)', homeOverlay: 'rgba(0, 0, 0, 0.350784)', homeCenterOverlay: 'rgba(0, 0, 0, 0.05)',
+    panel: '#303030', homeSurface: 'rgba(20, 20, 20, 0.84)', input: '#E8E8E8', orderSurface: '#E8E8E8', inputDisabled: '#E9E9E9', overlay: 'rgba(0, 0, 0, 0.72)', homeOverlay: 'rgba(0, 0, 0, 0.350784)', homeCenterOverlay: 'rgba(0, 0, 0, 0.20)',
     controlText: '#202020', controlSecondary: '#505050', controlIcon: '#505050',
     controlBorder: '#A9A9A9', controlSelected: '#E8E8E8', inputPlaceholder: '#555555',
     textPrimary: '#FFFFFF', textSecondary: '#F7F7F7', textLight: '#FFFFFF', textMuted: '#F7F7F7',

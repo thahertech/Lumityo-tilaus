@@ -6,17 +6,8 @@
 export const loadOrderHistoryWithSync = async (profileId, getOrders) => {
   try {
     const localOrders = await getOrders(profileId);
-    console.log('📱 Local orders found:', localOrders.length);
-    
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-    
-    console.log('🔐 Environment check:', {
-      hasUrl: !!supabaseUrl,
-      hasKey: !!supabaseKey,
-      urlLength: supabaseUrl?.length || 0
-    });
-    
     if (!supabaseUrl || !supabaseKey) {
       console.warn('⚠️ Missing Supabase credentials, using local orders only');
       return localOrders;
@@ -33,8 +24,6 @@ export const loadOrderHistoryWithSync = async (profileId, getOrders) => {
       
       if (response.ok) {
         const supabaseOrders = await response.json();
-        console.log('📊 Fetched Supabase orders for status sync:', supabaseOrders.length);
-        
         // Match orders by Supabase ID first (most reliable), then fall back to other criteria
         const updatedOrders = localOrders.map(localOrder => {
           let matchingOrder = null;
@@ -42,9 +31,6 @@ export const loadOrderHistoryWithSync = async (profileId, getOrders) => {
           // Method 1: Match by Supabase ID (most reliable)
           if (localOrder.supabase_id) {
             matchingOrder = supabaseOrders.find(so => so.id === localOrder.supabase_id);
-            if (matchingOrder) {
-              console.log(`✅ Status sync (by ID): ${localOrder.service_type} - ${matchingOrder.status}`);
-            }
           }
           
           // Method 2: Match by user details, service type, and approximate time (fallback for old orders)
@@ -71,9 +57,6 @@ export const loadOrderHistoryWithSync = async (profileId, getOrders) => {
               return userMatches && serviceMatches && timeMatches;
             });
             
-            if (matchingOrder) {
-              console.log(`✅ Status sync (by criteria): ${localOrder.service_type} - ${matchingOrder.status}`);
-            }
           }
           
           if (matchingOrder) {

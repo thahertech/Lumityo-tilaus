@@ -144,11 +144,6 @@ const OrderScreen = ({ route }) => {
       const deviceId = await getDeviceId();
       const hasFreeOrder = await hasClaimedFreeOrder(deviceId);
       setIsEligibleForFree(!hasFreeOrder);
-      console.log('🎁 Free order eligibility check:', { 
-        deviceId, 
-        hasFreeOrder, 
-        isEligible: !hasFreeOrder 
-      });
     } catch (error) {
       console.error('❌ Error checking free order eligibility:', error);
       setIsEligibleForFree(false);
@@ -158,8 +153,6 @@ const OrderScreen = ({ route }) => {
   const initDatabase = async () => {
     try {
       const deviceId = await getDeviceId();
-      console.log('📱 Device ID:', deviceId);
-      
       const profile = await getUserProfile(deviceId);
       if (profile) {
         setUserProfile(profile);
@@ -169,9 +162,6 @@ const OrderScreen = ({ route }) => {
           setAddress(profile.address || '');
           setAddressCoordinates(null);
         }
-        console.log('✅ Loaded user profile');
-      } else {
-        console.log('ℹ️ No existing profile for device');
       }
       
       // Check eligibility
@@ -269,17 +259,9 @@ const OrderScreen = ({ route }) => {
       
       // Only check for Lumityö orders (not Polanteen poisto)
       const lumityoOrders = orders.filter(order => order.palvelu === 'Lumityö');
-      
-      console.log('📑 Jatkuva tilaus check:', {
-        totalOrders: orders.length,
-        lumityoOrders: lumityoOrders.length
-      });
-      
       const settings = await getOrderSettings(deviceId);
       // Show prompt ONLY after FIRST Lumityö order, if continuous_order not enabled
       if (lumityoOrders.length === 1 && (!settings || settings.continuous_order !== true)) {
-        console.log('📢 Showing jatkuva tilaus prompt after first Lumityö order');
-        
         Alert.alert(
           'Hei! Kiinnostaako jatkuva tilaus?',
           'Säästä aikaa ja vaivaa! Voit asettaa jatkuvan tilauksen Omat tiedot -sivulla. Näin et unohda tilata lumityötä ja saat automaattisen palvelun.',
@@ -385,8 +367,6 @@ const OrderScreen = ({ route }) => {
 
     try {
       const deviceId = await getDeviceId();
-      console.log('📱 Creating order for device:', deviceId);
-      
       // Upsert user profile (will update if exists, create if not)
       const currentProfile = await getUserProfile(deviceId);
       const profileResult = await upsertUserProfile(deviceId, {
@@ -401,8 +381,6 @@ const OrderScreen = ({ route }) => {
         Alert.alert('Virhe', `Profiilia ei voitu tallentaa: ${profileResult.error || 'Tuntematon virhe'}`);
         return;
       }
-      
-      console.log('✅ Profile saved');
       setUserProfile(profileResult.profile);
 
       // Check if user has jatkuva tilaus enabled and ONLY apply to Lumityö
@@ -410,15 +388,6 @@ const OrderScreen = ({ route }) => {
       if (selectedService === 'Lumityö') {
         const orderSettings = await getOrderSettings(deviceId);
         isJatkuvaTilaus = orderSettings?.continuous_order === true;
-        
-        console.log('🔍 Jatkuva tilaus check:', {
-          service: selectedService,
-          hasSettings: !!orderSettings,
-          continuousOrder: orderSettings?.continuous_order,
-          isJatkuvaTilaus
-        });
-      } else {
-        console.log('🚫 Polanteen poisto cannot be jatkuva tilaus');
       }
 
       // Determine price based on eligibility and service
@@ -446,8 +415,6 @@ const OrderScreen = ({ route }) => {
         Alert.alert('Tilauksen lähetys ei onnistunut', 'Tarkista tilaushistoria ennen kuin yrität uudelleen. Jos et ole varma, ota yhteyttä asiakaspalveluun.');
         return;
       }
-      
-      console.log('✅ Order created:', orderResult.order?.id);
       setConfirmedOrder({ service: selectedService, address });
       Keyboard.dismiss();
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
@@ -702,8 +669,6 @@ const OrderScreen = ({ route }) => {
                 </>
               )}
 
-       
-             
             </ScrollView>
             {confirmedOrder ? <View style={styles.actionFooterBackground}>
               <View style={styles.actionFooter}>
@@ -780,8 +745,6 @@ const createOrderStyles = (theme) => StyleSheet.create({
     color: theme.colors.textLight,
     textAlign: 'center',
 
-
-
   },
   subtitle: {
     ...theme.typography.body,
@@ -789,8 +752,6 @@ const createOrderStyles = (theme) => StyleSheet.create({
     textAlign: 'center',
     marginTop: theme.spacing.sm,
     opacity: 0.95,
-
-
 
   },
   card: {
@@ -973,8 +934,6 @@ const createOrderStyles = (theme) => StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: 4,
 
-
-
   },
   input: {
     borderWidth: 1,
@@ -1019,8 +978,6 @@ const createOrderStyles = (theme) => StyleSheet.create({
     ...theme.typography.button,
     color: theme.colors.onPrimary,
 
-
-
   },
   footer: {
     alignItems: 'center',
@@ -1031,8 +988,6 @@ const createOrderStyles = (theme) => StyleSheet.create({
     color: theme.colors.textLight,
     opacity: 0.9,
     textAlign: 'center',
-
-
 
   },
   actionFooterBackground: {

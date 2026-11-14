@@ -34,8 +34,6 @@ export const upsertUserProfile = async (deviceId, profileData) => {
       .single();
 
     if (error) throw error;
-    
-    console.log('✅ User profile saved:', data);
     return { success: true, profile: data };
   } catch (error) {
     console.error('❌ Error saving profile:', error);
@@ -87,7 +85,6 @@ export const createSnowOrder = async (deviceId, orderData) => {
     let longitude = coordinates?.longitude;
 
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      console.log('🗺️ Order has no valid coordinates; geocoding address');
       try {
         ({ lat: latitude, lon: longitude } = await geocodeAddress(address));
       } catch (error) {

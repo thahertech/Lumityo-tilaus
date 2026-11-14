@@ -16,13 +16,8 @@ const hasValidCredentials = SUPABASE_URL && SUPABASE_URL.includes('supabase.co')
 
 if (hasValidCredentials) {
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  if (__DEV__) {
-    console.log('✅ Supabase client initialized');
-  }
-} else {
-  if (__DEV__) {
-    console.warn('⚠️ Supabase credentials not configured');
-  }
+} else if (__DEV__) {
+  console.warn('⚠️ Supabase credentials not configured');
 }
 
 /**
@@ -39,14 +34,7 @@ export const syncOrderToSupabase = async (orderData) => {
   try {
     const { serviceType, address, phone, name, priceEstimate, coordinates, info, isJatkuvaTilaus = false, deviceId, isFreeOrder = false, email = null } = orderData;
     
-    console.log(`🚀 Syncing order to Supabase for: ${name} at ${address}`);
-    if (isJatkuvaTilaus) {
-      console.log('♻️ This is a Jatkuva Tilaus (subscription) order');
-    }
-    if (isFreeOrder) {
-      console.log('🎉 This is a free order!');
-    }
-    
+
     let lat = null;
     let lon = null;
     
@@ -54,9 +42,7 @@ export const syncOrderToSupabase = async (orderData) => {
     if (Number.isFinite(coordinates?.latitude) && Number.isFinite(coordinates?.longitude)) {
       lat = coordinates.latitude;
       lon = coordinates.longitude;
-      console.log(`📍 Using provided coordinates: lat=${lat}, lon=${lon}`);
     } else {
-      console.log(`🗺️ No coordinates provided, geocoding address...`);
       const geocoded = await geocodeAddress(address);
       lat = geocoded.lat;
       lon = geocoded.lon;
@@ -80,9 +66,6 @@ export const syncOrderToSupabase = async (orderData) => {
       lat: lat, // Coordinates from selection or geocoding
       lon: lon  // Coordinates from selection or geocoding
     };
-
-    console.log(`📍 Final order coordinates: lat=${lat}, lon=${lon}`);
-
     const { data, error } = await supabase
       .from('snow_orders') // You'll need to create this table in Supabase
       .insert([supabaseOrder])
@@ -92,8 +75,6 @@ export const syncOrderToSupabase = async (orderData) => {
       console.error('❌ Error syncing order to Supabase:', error);
       return { success: false, error: error.message };
     }
-
-    console.log('✅ Order synced to Supabase:', data[0]);
     return { success: true, supabaseOrder: data[0] };
   } catch (error) {
     console.error('❌ Network error syncing to Supabase:', error);

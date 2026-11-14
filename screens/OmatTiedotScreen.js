@@ -164,9 +164,6 @@ const OmatTiedotScreen = ({ route }) => {
         setContinuousOrder(!value);
         return;
       }
-      
-      console.log(`🔄 Jatkuva tilaus toggle ${value ? 'enabled' : 'disabled'} and saved immediately`);
-      
       // Reload order history to reflect the change
       await loadOrderHistory();
     } catch (error) {
@@ -185,7 +182,6 @@ const OmatTiedotScreen = ({ route }) => {
       const deviceId = await getDeviceId();
       const orders = await getOrdersByDevice(deviceId);
       setOrders(orders || []);
-      console.log(`📋 Loaded ${orders?.length || 0} orders`);
     } catch (error) {
       console.error('Error loading order history:', error);
     }
@@ -422,8 +418,6 @@ const OmatTiedotScreen = ({ route }) => {
       </View>
     );
   };
-
-
 
   return (
     <View style={{ flex: 1 }}>

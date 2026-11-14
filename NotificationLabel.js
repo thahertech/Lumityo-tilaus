@@ -7,11 +7,6 @@ let supabase = null;
 try {
   const supabaseModule = require('./supabaseClient');
   supabase = supabaseModule.supabase || supabaseModule.default;
-  console.log('NotificationLabel: Supabase client loaded successfully:', !!supabase);
-  console.log('NotificationLabel: Supabase methods available:', {
-    from: typeof supabase?.from,
-    channel: typeof supabase?.channel
-  });
 } catch (error) {
   console.warn('NotificationLabel: Supabase not available, notifications disabled:', error.message);
 }
@@ -59,7 +54,6 @@ export default function NotificationLabel() {
         schema: 'public',
         table: 'notifications'
       }, (payload) => {
-        console.log('Notification change:', payload);
         fetchNotifications();
       })
       .subscribe();

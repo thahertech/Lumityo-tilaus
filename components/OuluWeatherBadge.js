@@ -3,6 +3,7 @@ import { Alert, AppState, Linking, StyleSheet, Text, TouchableOpacity, View } fr
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts } from '../theme';
+import { useTheme } from '../ThemeContext';
 import { getOuluDateKey, getOuluForecast } from '../utils/ouluWeather';
 
 const LICENSE_URL = 'https://creativecommons.org/licenses/by/4.0/';
@@ -75,11 +76,22 @@ export function useOuluForecast() {
 }
 
 export default function OuluWeatherBadge({ forecast }) {
+  const { theme } = useTheme();
+  const [lastDayWidth, setLastDayWidth] = useState(0);
+  const [lastLabelWidth, setLastLabelWidth] = useState(0);
   if (!forecast) return null;
 
   return (
     <View style={styles.widget}>
-      <Text style={[styles.foreground, styles.heading]}>Oulu · sääennuste</Text>
+      <View style={styles.headingRow}>
+        <View style={[styles.headingContainer, {
+          backgroundColor: theme.colors.homeSurface,
+          borderColor: theme.colors.border,
+          marginRight: Math.max(0, (lastDayWidth - lastLabelWidth) / 2),
+        }]}>
+          <Text style={[styles.foreground, styles.heading]}>Oulu · sääennuste</Text>
+        </View>
+      </View>
       <View style={styles.days}>
         {forecast.days.map((day, index) => {
           const label = dayLabel(day, index);
@@ -108,8 +120,14 @@ export default function OuluWeatherBadge({ forecast }) {
               accessibilityRole="button"
               accessibilityLabel={`${details} ${attribution} Näytä säätiedot ja lisenssi.`}
               activeOpacity={0.8}
+              onLayout={index === forecast.days.length - 1
+                ? ({ nativeEvent: { layout } }) => setLastDayWidth(layout.width)
+                : undefined}
             >
-              <Text style={[styles.foreground, styles.day]}>{label}</Text>
+              <Text style={[styles.foreground, styles.day]}
+                onLayout={index === forecast.days.length - 1
+                  ? ({ nativeEvent: { layout } }) => setLastLabelWidth(layout.width)
+                  : undefined}>{label}</Text>
               <View style={styles.row}>
                 <Ionicons name={day.icon || 'help-circle-outline'} size={23} color={WEATHER_COLOR} style={styles.foreground} />
                 <Text style={[styles.foreground, styles.temperature]}>
@@ -131,7 +149,9 @@ export default function OuluWeatherBadge({ forecast }) {
 
 const styles = StyleSheet.create({
   widget: { width: '100%' },
-  heading: { color: '#C4CDD4', fontFamily: fonts.regular, fontSize: 15, paddingHorizontal: 4 },
+  heading: { color: '#AEBAC4', fontFamily: fonts.regular, fontSize: 15 },
+  headingRow: { alignItems: 'flex-end' },
+  headingContainer: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'transparent' },
   days: { flexDirection: 'row', alignItems: 'stretch' },
   badge: {
     flex: 1, minWidth: 0, minHeight: 48, paddingVertical: 4, paddingHorizontal: 2,

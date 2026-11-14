@@ -2,15 +2,10 @@
   "expo": {
     "name": "Lumityöt",
     "slug": "Lumiwork",
-    "version": "2.2.7",
+    "version": "2.5.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": false,
       "buildNumber": "15",
@@ -32,13 +27,20 @@
         "projectId": "ae040a3f-e178-4831-b486-7415e1a8e042"
       }
     },
-    "eas": {
-      "projectId": "ae040a3f-e178-4831-b486-7415e1a8e042"
-    },
+    "assetBundlePatterns": ["**/*"],
     "plugins": [
       "expo-asset",
       "expo-font",
       "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#000000",
+          "enableFullScreenImage_legacy": true
+        }
+      ],
       [
         "expo-location",
         {
