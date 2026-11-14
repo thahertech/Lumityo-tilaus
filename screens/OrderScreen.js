@@ -1,3 +1,5 @@
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenHeader from '../components/ScreenHeader';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ScrollView, 
@@ -86,12 +88,12 @@ const AnimatedServiceButton = ({ service, isSelected, onPress }) => {
 
   const animatedBackgroundColor = glowAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: ['rgba(7, 13, 20, 0.62)', 'rgba(76, 132, 175, 0.92)'],
+    outputRange: [theme.colors.input, theme.colors.surfaceRaised],
   });
 
   const animatedBorderColor = glowAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: ['rgba(148, 163, 184, 0.35)', 'rgba(76, 132, 175, 0.95)'],
+    outputRange: [theme.colors.border, theme.colors.accent],
   });
 
   return (
@@ -123,6 +125,7 @@ const AnimatedServiceButton = ({ service, isSelected, onPress }) => {
 };
 
 const OrderScreen = ({ route }) => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const scrollViewRef = useRef(null);
   const phoneInputRef = useRef(null);
@@ -468,7 +471,7 @@ const OrderScreen = ({ route }) => {
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
       >
-          <Animated.View style={[styles.container, { opacity: fadeAnim }]}> 
+          <Animated.View style={[styles.container, { opacity: fadeAnim, paddingTop: insets.top + 24 }]}>
             <ScrollView
               ref={scrollViewRef}
               keyboardShouldPersistTaps="handled"
@@ -480,11 +483,12 @@ const OrderScreen = ({ route }) => {
               keyboardDismissMode="interactive"
             >
 
+              <ScreenHeader eyebrow="UUSI TILAUS" title="Apua lumitöihin" subtitle="Valitse palvelu ja kerro, minne saavumme." />
               {/* Service Selection */}
-              <View style={[globalStyles.modernCard, { top: 0, marginTop: 10 }]}>
+              <View style={[globalStyles.modernCard, { top: 0 }]}>
                 <View style={globalStyles.cardHeader}>
-                  <Ionicons name="snow-outline" size={24} color="#4c84af" />
-                  <Text style={globalStyles.cardHeaderText}>Valitse Palvelu</Text>
+                  <Ionicons name="snow-outline" size={24} color={theme.colors.textSecondary} />
+                  <Text style={globalStyles.cardHeaderText}>Valitse palvelu</Text>
                 </View>
                 <View style={styles.buttonContainer}>
                   {['Lumityö', 'Polanteen poisto'].map((service) => (
@@ -527,7 +531,7 @@ const OrderScreen = ({ route }) => {
                     entering="fadeIn"
                   >
                     <View style={globalStyles.cardHeader}>
-                      <Ionicons name="person-outline" size={24} color="#4c84af" />
+                      <Ionicons name="person-outline" size={24} color={theme.colors.textSecondary} />
                       <Text style={globalStyles.cardHeaderText}>Yhteystiedot</Text>
                     </View>
                     
@@ -602,7 +606,7 @@ const OrderScreen = ({ route }) => {
                     entering="fadeIn"
                   >
                     <View style={globalStyles.cardHeader}>
-                      <Ionicons name="document-text-outline" size={24} color="#4c84af" />
+                      <Ionicons name="document-text-outline" size={24} color={theme.colors.textSecondary} />
                       <Text style={globalStyles.cardHeaderText}>Lisätiedot</Text>
                     </View>
                     <TextInput
@@ -638,7 +642,7 @@ const OrderScreen = ({ route }) => {
                       end={{ x: 1, y: 0 }}
                     >
                       <Text style={styles.confirmButtonText}>
-                         {isSubmittingOrder ? 'Lähetetään...' : 'Vahvista Tilaus'}
+                         {isSubmittingOrder ? 'Lähetetään...' : 'Vahvista tilaus'}
                       </Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -657,7 +661,7 @@ const OrderScreen = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingTop: 24,
     backgroundColor: 'transparent',
   },
   scrollView: {
@@ -665,8 +669,11 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 120, // More padding for address suggestions and keyboard
+    paddingHorizontal: 20,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    paddingBottom: 32, // More padding for address suggestions and keyboard
     paddingTop: 10,
   },
   bgImage: {
@@ -693,9 +700,9 @@ const styles = StyleSheet.create({
     ...theme.typography.h1,
     color: theme.colors.textLight,
     textAlign: 'center',
-    textShadowColor: theme.colors.overlay,
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
+
+
+
   },
   subtitle: {
     ...theme.typography.body,
@@ -703,9 +710,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: theme.spacing.sm,
     opacity: 0.95,
-    textShadowColor: theme.colors.overlay,
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
+
+
+
   },
   card: {
     ...createCardStyle(),
@@ -728,10 +735,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16, // Reduced padding
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(7, 13, 20, 0.58)',
+    backgroundColor: theme.colors.input,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: 'rgba(148, 163, 184, 0.28)',
+    borderColor: theme.colors.border,
     minHeight: 56, // Slightly taller but not massive
     justifyContent: 'center',
     alignItems: 'center',
@@ -756,23 +763,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     textAlign: 'center',
-    color: '#e2e8f0',
+    color: theme.colors.textSecondary,
   },
   selectedServiceText: {
     color: '#ffffff',
     fontWeight: 'bold',
   },
   serviceDescriptionContainer: {
-    backgroundColor: 'rgba(15, 23, 42, 0.58)',
+    backgroundColor: theme.colors.input,
     padding: 16,
     borderRadius: 12,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.35)',
+    borderColor: theme.colors.border,
   },
   serviceDescription: {
     fontSize: 15,
-    color: '#e2e8f0',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     fontWeight: '500',
@@ -784,7 +791,7 @@ const styles = StyleSheet.create({
   },
   promptText: {
     fontSize: 16,
-    color: 'rgba(226, 232, 240, 0.9)',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     marginTop: 12,
     fontWeight: '500',
@@ -804,18 +811,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+
+
+
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.22)',
+    borderColor: theme.colors.border,
     padding: 14, // Reduced padding
     borderRadius: 12,
     fontSize: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
-    color: '#111827',
+    backgroundColor: theme.colors.input,
+    color: theme.colors.textPrimary,
     minHeight: 50, // Slightly reduced
     ...Platform.select({
       ios: {
@@ -863,10 +870,10 @@ const styles = StyleSheet.create({
   },
   confirmButtonText: {
     ...theme.typography.button,
-    color: theme.colors.textLight,
-    textShadowColor: theme.colors.overlay,
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
+    color: theme.colors.onPrimary,
+
+
+
   },
   footer: {
     alignItems: 'center',
@@ -877,9 +884,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textLight,
     opacity: 0.9,
     textAlign: 'center',
-    textShadowColor: theme.colors.overlay,
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+
+
+
   },
 });
 

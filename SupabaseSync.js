@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
+import { geocodeAddress } from './utils/geocodeAddress';
 
 // Supabase configuration - SECURE: using environment variables only
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 
@@ -23,47 +24,6 @@ if (hasValidCredentials) {
     console.warn('⚠️ Supabase credentials not configured');
   }
 }
-
-/**
- * Geocode an address to get latitude and longitude
- * @param {string} address - Address to geocode
- * @returns {Object} - {lat, lon} or {lat: null, lon: null} if failed
- */
-const geocodeAddress = async (address) => {
-  try {
-    const apiKey = process.env.EXPO_PUBLIC_OPENCAGE_API_KEY || 
-                   Constants.expoConfig?.extra?.opencageApiKey;
-    
-    if (!apiKey) {
-      console.warn('⚠️ OpenCage API key not configured');
-      return { lat: null, lon: null };
-    }
-    
-    const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}&limit=1`;
-    
-    if (__DEV__) {
-      console.log(`🗺️ Geocoding address: ${address}`);
-    }
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.status.code === 200 && data.results.length > 0) {
-      const result = data.results[0];
-      const lat = result.geometry.lat;
-      const lon = result.geometry.lng;
-      
-      console.log(`✅ Geocoded successfully: ${lat}, ${lon}`);
-      return { lat, lon };
-    } else {
-      console.warn(`❌ Geocoding failed for address: ${address}`);
-      return { lat: null, lon: null };
-    }
-  } catch (error) {
-    console.error('❌ Geocoding error:', error);
-    return { lat: null, lon: null };
-  }
-};
 
 /**
  * Sync a local order to Supabase database for MapApp consumption
@@ -91,7 +51,7 @@ export const syncOrderToSupabase = async (orderData) => {
     let lon = null;
     
     // Use provided coordinates if available, otherwise geocode the address
-    if (coordinates && coordinates.latitude && coordinates.longitude) {
+    if (Number.isFinite(coordinates?.latitude) && Number.isFinite(coordinates?.longitude)) {
       lat = coordinates.latitude;
       lon = coordinates.longitude;
       console.log(`📍 Using provided coordinates: lat=${lat}, lon=${lon}`);

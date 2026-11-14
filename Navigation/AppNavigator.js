@@ -1,9 +1,10 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../ThemeContext';
 import HomeScreen from '../screens/HomeScreen';
 import OrderScreen from '../screens/OrderScreen';
 import OmatTiedotScreen from '../screens/OmatTiedotScreen';
@@ -13,6 +14,7 @@ const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
 
   return (
     <Tab.Navigator
@@ -39,61 +41,25 @@ const TabNavigator = () => {
           }
 
           return (
-            <View style={[
-              focused && {
-                backgroundColor: 'rgba(76, 132, 175, 0.25)',
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: 'rgba(76, 132, 175, 0.45)',
-                paddingHorizontal: 14,
-                paddingVertical: 6,
-              }
-            ]}>
-              <Ionicons name={iconName} size={24} color={color} />
+            <View style={{ borderRadius: 14, backgroundColor: focused ? theme.colors.surfaceRaised : 'transparent', paddingHorizontal: 18, paddingVertical: 5 }}>
+              <Ionicons name={iconName} size={23} color={color} />
             </View>
           );
         },
-        tabBarActiveTintColor: '#4c84af',
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
+        tabBarActiveTintColor: theme.colors.accent,
+        tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarHideOnKeyboard: true,
         tabBarStyle: {
-          position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 24 : 16,
-          left: 24,
-          right: 24,
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
+          backgroundColor: theme.colors.background,
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.borderLight,
           elevation: 0,
-          height: 64,
+          height: 72 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 8),
         },
-        tabBarBackground: () => (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                borderRadius: 32,
-                overflow: 'hidden',
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.12)',
-                backgroundColor: 'rgba(15, 23, 42, 0.82)',
-              },
-            ]}
-          />
-        ),
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '600',
-          marginTop: 2,
-        },
-        tabBarItemStyle: {
-          height: 64,
-          justifyContent: 'center',
-          alignItems: 'center',
-          paddingVertical: 10,
-          flex: 1,
-        },
-        tabBarIconStyle: {
-          marginBottom: 0,
-        },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600', marginTop: 3 },
+        tabBarItemStyle: { paddingVertical: 2 },
         headerShown: false,
         gestureEnabled: true,
         gestureDirection: 'horizontal',
@@ -117,16 +83,20 @@ const TabNavigator = () => {
       <Tab.Screen 
         name="Profiili" 
         component={OmatTiedotScreen}
-        options={{ title: 'Profiili' }}
+        options={{ title: 'Omat sivut' }}
       />
     </Tab.Navigator>
   );
 };
 
-const AppNavigator = () => (
-  <NavigationContainer>
-    <TabNavigator />
-  </NavigationContainer>
-);
+const AppNavigator = () => {
+  const { theme } = useTheme();
+  const baseTheme = theme.mode === 'light' ? DefaultTheme : DarkTheme;
+  return (
+    <NavigationContainer theme={{ ...baseTheme, colors: { ...baseTheme.colors, background: theme.colors.background, card: theme.colors.surface, text: theme.colors.textPrimary, border: theme.colors.border, primary: theme.colors.primaryLight } }}>
+      <TabNavigator />
+    </NavigationContainer>
+  );
+};
 
 export default AppNavigator;

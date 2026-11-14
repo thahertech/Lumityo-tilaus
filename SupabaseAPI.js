@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { geocodeAddress } from './utils/geocodeAddress';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -81,6 +82,14 @@ export const createSnowOrder = async (deviceId, orderData) => {
       isFreeOrder
     } = orderData;
 
+    let latitude = coordinates?.latitude;
+    let longitude = coordinates?.longitude;
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      console.log('🗺️ Order has no valid coordinates; geocoding address');
+      ({ lat: latitude, lon: longitude } = await geocodeAddress(address));
+    }
+
     const { data, error } = await supabase
       .from('snow_orders')
       .insert({
@@ -90,8 +99,8 @@ export const createSnowOrder = async (deviceId, orderData) => {
         phone,
         name,
         price: priceEstimate,
-        lat: coordinates?.latitude || null,
-        lon: coordinates?.longitude || null,
+        lat: Number.isFinite(latitude) ? latitude : null,
+        lon: Number.isFinite(longitude) ? longitude : null,
         info: info || null,
         jatkuva_tilaus: isRecurring || false,
         is_free_order: isFreeOrder || false,

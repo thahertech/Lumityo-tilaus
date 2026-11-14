@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -17,6 +18,7 @@ const AddressAutocompleteMapbox = ({
   onChangeText, 
   onAddressSelect, 
   onFocus,
+  placeholderTextColor = theme.colors.textMuted,
   placeholder = "Esim. Kauppakatu 1, Oulu",
   style,
   inputStyle,
@@ -435,7 +437,7 @@ const AddressAutocompleteMapbox = ({
           value={value || ''}
           onChangeText={handleInputChange}
           placeholder={placeholder}
-          placeholderTextColor="#999"
+          placeholderTextColor={placeholderTextColor}
           onFocus={() => {
             setShowSuggestions(suggestions.length > 0);
             if (onFocus) onFocus();
@@ -449,7 +451,7 @@ const AddressAutocompleteMapbox = ({
           <ActivityIndicator
             style={styles.loadingIndicator}
             size="small"
-            color="#007AFF"
+            color={theme.colors.accent}
           />
         )}
       </View>
@@ -534,13 +536,14 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    height: 50,
+    minHeight: 54,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
     paddingHorizontal: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.input,
+    color: theme.colors.textPrimary,
   },
   loadingIndicator: {
     position: 'absolute',
@@ -548,13 +551,13 @@ const styles = StyleSheet.create({
   },
   suggestionsContainer: {
     position: 'absolute',
-    top: 52,
+    top: 58,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
     borderTopWidth: 0,
     maxHeight: 200,
     zIndex: 999,
@@ -573,11 +576,11 @@ const styles = StyleSheet.create({
   suggestionItem: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.surfaceRaised,
   },
   suggestionText: {
     fontSize: 16,
-    color: '#333',
+    color: theme.colors.textPrimary,
   },
   // Modal styles
   modalOverlay: {
@@ -588,7 +591,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 24,
     width: '100%',
@@ -605,25 +608,26 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
   },
   katuNumeroInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
     padding: 12,
     fontSize: 18,
     textAlign: 'center',
     marginBottom: 24,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.input,
+    color: theme.colors.textPrimary,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -633,25 +637,25 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     padding: 14,
-    borderRadius: 8,
+    borderRadius: theme.borderRadius.md,
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: theme.colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
   },
   confirmButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary,
   },
   cancelButtonText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
     fontWeight: '500',
   },
   confirmButtonText: {
     fontSize: 16,
-    color: '#fff',
+    color: theme.colors.onPrimary,
     fontWeight: '600',
   },
 });

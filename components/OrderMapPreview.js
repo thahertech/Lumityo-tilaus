@@ -1,3 +1,4 @@
+import { theme } from '../theme';
 import React, { useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -31,21 +32,21 @@ const OrderMapPreview = ({ initialLatitude, initialLongitude, address, onCoordin
   <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0f172a; }
+    body { background: #111111; }
     #map { width: 100%; height: 100vh; }
     #map canvas { filter: brightness(0.72) saturate(0.9) contrast(1.05); }
 
     .mapboxgl-popup-content {
-      background: rgba(15, 23, 42, 0.95) !important;
-      border: 1px solid rgba(76, 132, 175, 0.4) !important;
+      background: rgba(24, 24, 24, 0.98) !important;
+      border: 1px solid rgba(255, 255, 255, 0.18) !important;
       border-radius: 8px !important;
-      color: #cbd5e1 !important;
+      color: #C6C6C6 !important;
       font-family: -apple-system, sans-serif;
       font-size: 12px;
       padding: 8px 12px !important;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
     }
-    .mapboxgl-popup-tip { border-top-color: rgba(15, 23, 42, 0.95) !important; }
+    .mapboxgl-popup-tip { border-top-color: rgba(24, 24, 24, 0.98) !important; }
     .mapboxgl-ctrl-attrib { display: none !important; }
   </style>
 </head>
@@ -76,7 +77,7 @@ const OrderMapPreview = ({ initialLatitude, initialLongitude, address, onCoordin
       ].join(';');
 
       const popup = new mapboxgl.Popup({ offset: 30, closeButton: false })
-        .setHTML('<span style="color:#cbd5e1;font-weight:600">${(address || '').replace(/'/g, "\\'")}</span>');
+        .setHTML('<span style="color:#C6C6C6;font-weight:600">${(address || '').replace(/'/g, "\\'")}</span>');
 
       marker = new mapboxgl.Marker({ element: el, draggable: true })
         .setLngLat([${initialLongitude}, ${initialLatitude}])
@@ -114,11 +115,11 @@ const OrderMapPreview = ({ initialLatitude, initialLongitude, address, onCoordin
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
-        <Ionicons name="location-outline" size={16} color="#4c84af" />
+        <Ionicons name="location-outline" size={16} color={theme.colors.primaryLight} />
         <Text style={styles.headerText}>Sijainti kartalla</Text>
         {onReset && (
           <TouchableOpacity onPress={onReset} style={styles.resetBtn}>
-            <Ionicons name="refresh-outline" size={14} color="#94a3b8" />
+            <Ionicons name="refresh-outline" size={14} color="#A0A0A0" />
             <Text style={styles.resetText}>Palauta</Text>
           </TouchableOpacity>
         )}
@@ -138,7 +139,7 @@ const OrderMapPreview = ({ initialLatitude, initialLongitude, address, onCoordin
         />
       </View>
       <Text style={styles.hint}>
-        <Ionicons name="information-circle-outline" size={12} color="#64748b" />
+        <Ionicons name="information-circle-outline" size={12} color={theme.colors.textMuted} />
         {' '}Osoite pysyy samana — vain tarkkaa sijaintia muutetaan
       </Text>
     </View>
@@ -151,8 +152,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(76, 132, 175, 0.35)',
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.input,
   },
   header: {
     flexDirection: 'row',
@@ -161,11 +162,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 6,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(76, 132, 175, 0.2)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.12)',
   },
   headerText: {
     flex: 1,
-    color: '#cbd5e1',
+    color: '#C6C6C6',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -174,16 +175,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 12,
     borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.07)',
   },
   resetText: {
-    color: '#94a3b8',
+    color: '#A0A0A0',
     fontSize: 12,
   },
   dragHint: {
-    color: '#94a3b8',
+    color: '#A0A0A0',
     fontSize: 12,
     paddingHorizontal: 12,
     paddingTop: 8,
@@ -197,7 +198,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   hint: {
-    color: '#64748b',
+    color: theme.colors.textMuted,
     fontSize: 11,
     paddingHorizontal: 12,
     paddingVertical: 7,

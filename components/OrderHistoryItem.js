@@ -34,17 +34,17 @@ const OrderHistoryItem = ({ item }) => {
     }
   };
 
-  // Get status color - using blue variations only
+  // Status colors supplement the text and icon labels.
   const getStatusColor = (status) => {
     switch (status) {
       case 'odottaa':
-      case 'pending': return theme.colors.primaryLight; // Dark blue for waiting
+      case 'pending': return theme.colors.warning;
       case 'kuitattu':
-      case 'completed': return theme.colors.primaryLight; // Main blue for completed
+      case 'completed': return theme.colors.success;
       case 'kesken':
-      case 'in-progress': return theme.colors.primaryLight; // Light blue for in progress
+      case 'in-progress': return theme.colors.info;
       case 'peruttu':
-      case 'cancelled': return theme.colors.textMuted; // Gray for cancelled
+      case 'cancelled': return theme.colors.error;
       default: return theme.colors.textMuted; // Gray for unknown
     }
   };
@@ -67,19 +67,19 @@ const OrderHistoryItem = ({ item }) => {
           </Text>
         </View>
         <View style={styles.orderItemRow}>
-          <Ionicons name="calendar-outline" size={16} color="#ccc" />
+          <Ionicons name="calendar-outline" size={16} color={theme.colors.textMuted} />
           <Text style={styles.orderItemText}>{new Date(item.created_at).toLocaleDateString('fi-FI')}</Text>
         </View>
         {item.price && (
           <View style={styles.orderItemRow}>
-            <Ionicons name="card-outline" size={16} color="#636363ff" />
+            <Ionicons name="card-outline" size={16} color={theme.colors.textMuted} />
             <Text style={styles.orderItemText}>{item.price}</Text>
           </View>
         )}
         {item.is_free_order === 1 && (
           <View style={styles.orderItemRow}>
-            <Ionicons name="gift-outline" size={16} color="#e74c3c" />
-            <Text style={[styles.orderItemText, { color: '#e74c3c', fontWeight: 'bold' }]}>
+            <Ionicons name="gift-outline" size={16} color={theme.colors.success} />
+            <Text style={[styles.orderItemText, { color: theme.colors.success, fontWeight: 'bold' }]}>
               Ilmainen tilaus
             </Text>
           </View>

@@ -1,10 +1,12 @@
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useRef, useEffect, useState } from 'react';
-import { View, TouchableOpacity, Text, Image, StatusBar, Animated, Alert, StyleSheet, Linking, ScrollView, Easing } from 'react-native';
+import { View, TouchableOpacity, Text, Image, StatusBar, Animated, Alert, StyleSheet, Platform, Linking, ScrollView, Easing, useWindowDimensions } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import heroImage from '../assets/Mountains.jpg';
-import HeaderImage from '../assets/Header.png';
+import HeaderImage from '../assets/header_img.png';
+import { theme } from '../theme';
 import NotificationLabel from '../NotificationLabel';
 import { getDeviceId } from '../FreeOrderUtils';
 import { hasClaimedFreeOrder } from '../SupabaseAPI';
@@ -78,11 +80,11 @@ const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle,
 
   const getColors = () =>
     isPrimary
-      ? ['rgba(76, 132, 175, 0.92)', 'rgba(44, 82, 130, 0.92)']
-      : ['rgba(7, 13, 20, 0.58)', 'rgba(7, 13, 20, 0.58)'];
+      ? [theme.colors.primary, theme.colors.primaryDark]
+      : [theme.colors.surface, theme.colors.surface];
 
-  const textColor = '#f8fafc';
-  const iconColor = isPrimary ? '#ffffff' : '#cfe3f4';
+  const textColor = isPrimary ? theme.colors.onPrimary : theme.colors.textPrimary;
+  const iconColor = textColor;
 
   return (
     <Animated.View style={[localStyles.buttonWrapper, entranceStyle, { transform: [{ scale: scaleAnim }] }]}> 
@@ -91,7 +93,8 @@ const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle,
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={0.9}
-        accessibilityLabel={title}
+        accessibilityRole="button"
+        accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
       >
         {glowStyle ? <Animated.View pointerEvents="none" style={[localStyles.buttonGlow, glowStyle]} /> : null}
         <LinearGradient
@@ -100,7 +103,7 @@ const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle,
           end={{ x: 1, y: 1 }}
           style={[localStyles.buttonGradient, !isPrimary && localStyles.secondaryButtonGradient]}
         >
-          <View style={localStyles.buttonContent}>
+          <View style={[localStyles.buttonContent, isPrimary && localStyles.primaryButtonContent]}>
             {iconName && (
               <View style={localStyles.iconContainer}>
                 <Ionicons name={iconName} size={20} color={iconColor} />
@@ -137,13 +140,11 @@ const ModernButton = ({ title, onPress, iconName, variant = 'primary', subtitle,
 };
 
 const HomeScreen = () => {
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const heroHeight = Math.min(210, Math.max(138, windowHeight * 0.22));
   const phoneNumber = '+358407362403';
   const navigation = useNavigation();
-  const bannerOpacity = useRef(new Animated.Value(0)).current;
-  const bannerTranslateY = useRef(new Animated.Value(-6)).current;
-  const bannerScale = useRef(new Animated.Value(0.96)).current;
-  const bannerPulse = useRef(new Animated.Value(0)).current;
-  const hasShownBannerOnce = useRef(false);
   const buttonAnim1 = useRef(new Animated.Value(0)).current;
   const buttonAnim2 = useRef(new Animated.Value(0)).current;
   const buttonAnim3 = useRef(new Animated.Value(0)).current;
@@ -207,84 +208,6 @@ const HomeScreen = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (isEligibleForFree) {
-      bannerOpacity.setValue(0);
-      bannerTranslateY.setValue(10);
-      bannerScale.setValue(0.96);
-      bannerPulse.setValue(0);
-
-      const entranceDelay = hasShownBannerOnce.current ? 90 : 500;
-      hasShownBannerOnce.current = true;
-
-      Animated.sequence([
-        Animated.delay(entranceDelay),
-        Animated.parallel([
-          Animated.timing(bannerOpacity, {
-            toValue: 1,
-            duration: 420,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.spring(bannerTranslateY, {
-            toValue: 0,
-            tension: 70,
-            friction: 10,
-            useNativeDriver: true,
-          }),
-          Animated.sequence([
-            Animated.timing(bannerScale, {
-              toValue: 1.02,
-              duration: 180,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.spring(bannerScale, {
-              toValue: 1,
-              tension: 95,
-              friction: 12,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(bannerPulse, {
-              toValue: 0.45,
-              duration: 260,
-              useNativeDriver: true,
-            }),
-            Animated.timing(bannerPulse, {
-              toValue: 0,
-              duration: 520,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]),
-      ]).start();
-      return;
-    }
-
-    Animated.parallel([
-      Animated.timing(bannerOpacity, {
-        toValue: 0,
-        duration: 180,
-        easing: Easing.inOut(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(bannerTranslateY, {
-        toValue: -4,
-        duration: 180,
-        easing: Easing.inOut(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(bannerScale, {
-        toValue: 0.98,
-        duration: 180,
-        easing: Easing.inOut(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [isEligibleForFree]);
-
   // Re-check eligibility when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
@@ -327,44 +250,49 @@ const HomeScreen = () => {
 
       <Image source={heroImage} style={localStyles.backgroundImage} resizeMode="cover" />
       <LinearGradient
-        colors={['rgba(5, 12, 20, 0.25)', 'rgba(5, 12, 20, 0.68)', 'rgba(5, 12, 20, 0.95)']}
+        colors={['rgba(12, 12, 12, 0.85)', theme.colors.overlay, theme.colors.background]}
         style={localStyles.backgroundOverlay}
       />
 
-      <NotificationLabel />
 
       <ScrollView
-        contentContainerStyle={localStyles.scrollContent}
+        contentContainerStyle={[localStyles.scrollContent, { paddingTop: insets.top + 12 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={localStyles.heroBlock}>
-          <Image source={HeaderImage} style={localStyles.heroLogo} resizeMode="contain" />
-        </View>
+        <NotificationLabel />
 
-        <View style={localStyles.freeBannerSlot}>
-          <Animated.View
-            pointerEvents={isEligibleForFree ? 'auto' : 'none'}
-            style={[
-              localStyles.freeBanner,
-              {
-                opacity: bannerOpacity,
-                transform: [{ translateY: bannerTranslateY }, { scale: bannerScale }],
-              },
-            ]}
+
+        {isEligibleForFree && (
+          <TouchableOpacity
+            style={localStyles.freeBanner}
+            onPress={handleOrderButtonPress}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel="Ensimmäinen tilaus ilmainen. Siirry tilaamaan."
           >
-            <Animated.View pointerEvents="none" style={[localStyles.freeBannerPulse, { opacity: bannerPulse }]} />
-            <View style={localStyles.freeBannerIcon}>
-              <Ionicons name="gift" size={28} color="#fff" />
+            <View style={localStyles.freeBannerPrice} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <Text style={localStyles.freeBannerAmount}>0</Text>
+              <Text style={localStyles.freeBannerCurrency}>€</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={localStyles.freeBannerTitle}>Ensimmainen tilaus ilmainen</Text>
-              <Text style={localStyles.freeBannerSubtitle}>Kokeile palvelua maksutta</Text>
+            <View style={localStyles.freeBannerCopy}>
+              <Text style={localStyles.freeBannerTitle}>Ensimmäinen tilaus</Text>
+              <Text style={localStyles.freeBannerSubtitle}>Ilmainen uusille asiakkaille.</Text>
             </View>
-          </Animated.View>
-        </View>
+            <Ionicons name="arrow-forward" size={18} color={theme.colors.textMuted} />
+          </TouchableOpacity>
+        )}
 
         <View style={localStyles.menuContainer}>
+          <View style={[localStyles.heroBlock, { height: heroHeight }]}>
+            <Image
+              source={HeaderImage}
+              style={[localStyles.heroLogo, { height: heroHeight }]}
+              resizeMode="contain"
+              accessible
+              accessibilityLabel="Lumityötä tekevä traktori"
+            />
+          </View>
           <ModernButton
             title="Tilaa Lumityö"
             onPress={handleOrderButtonPress}
@@ -372,7 +300,7 @@ const HomeScreen = () => {
             variant="primary"
             subtitle="Luo palvelutilaus tästä"
             entranceStyle={makeEntranceStyle(buttonAnim1)}
-            glowStyle={{ opacity: primaryGlow }}
+
           />
           <ModernButton
             title="Omat tiedot"
@@ -399,7 +327,7 @@ const HomeScreen = () => {
 const localStyles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#060c14',
+    backgroundColor: theme.colors.background,
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
@@ -411,64 +339,73 @@ const localStyles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: 74,
-    paddingBottom: 170,
+    paddingBottom: 24,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
   },
   heroBlock: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    paddingHorizontal: 6,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 0,
+    width: '100%',
   },
   heroLogo: {
-    width: 640,
-    height: 246,
+    width: '100%',
+    maxWidth: 366,
     opacity: 0.97,
   },
-  freeBannerSlot: {
+  freeBanner: {
     marginHorizontal: 20,
     marginBottom: 18,
-    minHeight: 82,
-  },
-  freeBanner: {
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
-    borderRadius: 16,
-    overflow: 'hidden',
-    padding: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.35)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
+    borderColor: theme.colors.borderLight,
+    borderRadius: 14,
   },
-  freeBannerPulse: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(125, 186, 236, 0.22)',
-    borderRadius: 16,
+  freeBannerPrice: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 3,
+    paddingRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: theme.colors.border,
   },
-  freeBannerIcon: {
-    backgroundColor: 'rgba(76, 132, 175, 0.85)',
-    borderRadius: 12,
-    padding: 9,
-    marginRight: 11,
+  freeBannerAmount: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '500',
+    letterSpacing: -1.5,
+    color: theme.colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  freeBannerCurrency: {
+    fontSize: 18,
+    color: theme.colors.textMuted,
+  },
+  freeBannerCopy: {
+    flex: 1,
+    gap: 4,
   },
   freeBannerTitle: {
-    color: '#f8fafc',
-    fontWeight: '700',
-    fontSize: 13,
-    marginBottom: 2,
+    color: theme.colors.textPrimary,
+    fontWeight: '600',
+    fontSize: 15,
+    lineHeight: 21,
   },
   freeBannerSubtitle: {
-    color: 'rgba(226, 232, 240, 0.92)',
-    fontWeight: '500',
-    fontSize: 12,
+    color: theme.colors.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
   },
   menuContainer: {
-    marginHorizontal: 20,
-    gap: 12,
+    marginHorizontal: 18,
+    gap: 10,
   },
   buttonWrapper: {
     marginBottom: 0,
@@ -476,14 +413,14 @@ const localStyles = StyleSheet.create({
   buttonGlow: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 18,
-    backgroundColor: 'rgba(125, 186, 236, 0.35)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     transform: [{ scale: 1.02 }],
   },
   buttonGradient: {
     borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.24)',
+    borderColor: theme.colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -491,20 +428,23 @@ const localStyles = StyleSheet.create({
     elevation: 4,
   },
   secondaryButtonGradient: {
-    borderColor: 'rgba(148, 163, 184, 0.28)',
+    borderColor: theme.colors.border,
   },
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    minHeight: 64,
+    minHeight: 68,
+  },
+  primaryButtonContent: {
+    minHeight: 76,
   },
   iconContainer: {
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: 'rgba(241, 245, 249, 0.14)',
+    backgroundColor: 'rgba(128, 128, 128, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -513,15 +453,22 @@ const localStyles = StyleSheet.create({
     flex: 1,
   },
   buttonTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-    marginBottom: 1,
+    ...Platform.select({
+      ios: { fontFamily: 'Avenir Next', fontWeight: '500' },
+      android: { fontFamily: 'sans-serif-medium', fontWeight: 'normal' },
+      default: { fontFamily: 'sans-serif', fontWeight: '500' },
+    }),
+    fontSize: 18,
+    lineHeight: 24,
+    letterSpacing: -0.3,
+    marginBottom: 3,
   },
   buttonSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.05,
+    fontFamily: Platform.OS === 'ios' ? 'Avenir Next' : 'sans-serif',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '400',
+    letterSpacing: 0,
   },
 });
 

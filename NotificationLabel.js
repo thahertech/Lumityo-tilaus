@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from './ThemeContext';
 
 // Try to import supabase, but handle if it's not available
 let supabase = null;
@@ -16,7 +17,32 @@ try {
 }
 
 export default function NotificationLabel() {
+  const { theme } = useTheme();
   const [notifications, setNotifications] = useState([]);
+  const styles = StyleSheet.create({
+    outerContainer: {
+      marginHorizontal: 20,
+      marginBottom: 20,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
+      zIndex: 1000,
+      paddingVertical: 10,
+    },
+    container: {
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+      alignItems: 'center',
+      zIndex: 1000,
+    },
+    notificationText: {
+      fontSize: 18,
+      color: theme.colors.textPrimary,
+      textAlign: 'center',
+      fontWeight: '600',
+    },
+  });
 
   useEffect(() => {
     if (!supabase) {
@@ -96,29 +122,3 @@ export default function NotificationLabel() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  outerContainer: {
-    position: 'absolute',
-    top: 80,
-    width: '100%',
-    backgroundColor: '#00000064',
-    zIndex: 1000,
-    paddingVertical: 10,
-  },
-  container: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  notificationText: {
-    fontSize: 18,
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: '800',
-    textShadowColor: 'rgba(0, 0, 0, 0.7)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-});

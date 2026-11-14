@@ -1,3 +1,5 @@
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenHeader from '../components/ScreenHeader';
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,6 +12,7 @@ import styles from '../styles';
 import { theme } from '../theme';
 
 const OrderHistoryScreen = () => {
+  const insets = useSafeAreaInsets();
   const [orders, setOrders] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -56,7 +59,7 @@ const OrderHistoryScreen = () => {
         <Ionicons name="snow-outline" size={64} color={theme.colors.primary} />
         <Text style={localStyles.emptyTitle}>Ei tilauksia</Text>
         <Text style={localStyles.emptyText}>Sinulla ei ole vielä yhtään tilausta.</Text>
-        <Text style={localStyles.emptySubtext}>Tee ensimmäinen tilauksesi etusivulta!</Text>
+        <Text style={localStyles.emptySubtext}>Tee ensimmäinen tilauksesi Tilaa-välilehdeltä.</Text>
       </View>
     </View>
   );
@@ -67,19 +70,11 @@ const OrderHistoryScreen = () => {
       
       <View style={styles.overlay} />
       
-      <View style={localStyles.headerContainer}>
-        <View style={styles.profileHeader}>
-          <Ionicons name="receipt-outline" size={32} color="#fff" />
-          <Text style={styles.profileHeaderText}>Tilaushistoria</Text>
-        </View>
-        <View style={localStyles.headerStats}>
-          <View style={localStyles.buttonContainer}>
-            <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-              <Ionicons name="refresh-outline" size={16} color="#fff" />
-              <Text style={styles.refreshButtonText}>Päivitä</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      <View style={[localStyles.headerContainer, { paddingTop: insets.top + 24 }]}>
+        <ScreenHeader eyebrow="OMAT TILAUKSET" title="Tilaushistoria" subtitle="Seuraa tilaustesi etenemistä."
+          action={<TouchableOpacity accessibilityLabel="Päivitä tilaukset" style={styles.refreshButton} onPress={onRefresh}>
+            <Ionicons name="refresh-outline" size={20} color={theme.colors.primaryLight} />
+          </TouchableOpacity>} />
       </View>
 
       <View style={localStyles.listContainer}>
@@ -87,7 +82,7 @@ const OrderHistoryScreen = () => {
           data={orders}
           renderItem={renderItem}
           keyExtractor={(item, index) => item.id ? item.id.toString() : `order-${index}`}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, paddingBottom: 140 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 0, paddingBottom: 24 }}
           style={{ width: '100%' }}
           refreshControl={
             <RefreshControl
@@ -116,6 +111,8 @@ const localStyles = StyleSheet.create({
   listContainer: {
     flex: 1,
     width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
   },
   headerImage: {
     width: '100%',
@@ -124,8 +121,11 @@ const localStyles = StyleSheet.create({
   },
   headerContainer: {
     paddingTop: 60,
-    paddingBottom: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.xl,
+    paddingBottom: 0,
+    paddingHorizontal: 20,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
     zIndex: 1,
   },
   headerStats: {
@@ -165,15 +165,17 @@ const localStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: theme.spacing.xxl * 2,
+    paddingHorizontal: 0,
+    paddingVertical: 32,
   },
   emptyCard: {
-    backgroundColor: 'rgba(0, 0, 0, 0.98)',
-    padding: theme.spacing.xxl,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.lg,
     borderRadius: theme.borderRadius.xl,
     alignItems: 'center',
-    minWidth: 300,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
     ...theme.shadows.lg,
   },
   emptyTitle: {
@@ -200,13 +202,14 @@ const localStyles = StyleSheet.create({
     padding: theme.spacing.lg,
     borderTopWidth: 1,
     borderColor: theme.colors.glassBorder,
-    bottom: 80,
+
   },
   bottomLabel: {
     ...theme.typography.body,
     fontWeight: '400',
-    color: theme.colors.textLight,
+    color: theme.colors.textMuted,
     textAlign: 'center',
+    fontSize: 14,
   },
 });
 

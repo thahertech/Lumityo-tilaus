@@ -4,7 +4,7 @@ export default {
   expo: {
     name: "Lumityöt",
     slug: "Lumiwork",
-    version: "2.2.5",
+    version: "2.2.6",
     sdkVersion: "54.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
@@ -16,7 +16,7 @@ export default {
     },
     ios: {
       supportsTablet: false,
-      buildNumber: "13",
+      buildNumber: "14",
       bundleIdentifier: "com.senseitechh.Lumiwork"
     },
     android: {
