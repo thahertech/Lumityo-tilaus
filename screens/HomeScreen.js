@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Alert, Animated, Easing, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Alert, Animated, Easing, Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,17 +12,15 @@ import { HomeSnowContext } from '../components/HomeSnowContext';
 import OuluWeatherBadge, { useOuluForecast } from '../components/OuluWeatherBadge';
 import { getDeviceId } from '../FreeOrderUtils';
 import { getUserProfile, hasClaimedFreeOrder } from '../SupabaseAPI';
+import { PACKAGE_PREVIEW_ENABLED, getPackageSession, getPackages } from '../PackageAPI';
 import tractor from '../assets/image.png';
 import tractorGround from '../assets/tractor-ground.png';
 import snowField from '../assets/home-snowfield.png';
-import snowMountain from '../assets/home-snow-mountain.png';
-import tractorSnow from '../assets/tractor-snowfall.png';
 
 const TRACTOR_OFFSET_Y = 22;
 // The upper edge of the rear wheel in the tractor artwork.
-const WHEEL_TOP_RATIO = 0.4;
 
-function HomeAction({ title, subtitle, icon, onPress, primary, neutral, theme }) {
+function HomeAction({ title, subtitle, icon, onPress, primary, neutral, theme, tile = false }) {
   const background = primary ? theme.colors.primary : neutral ? '#F5F5F5' : '#151515';
   const foreground = neutral ? '#202020' : theme.colors.onPrimary;
   const subtitleColor = primary ? '#E6EEF4' : neutral ? '#505050' : '#C4C4C4';
@@ -33,26 +31,36 @@ function HomeAction({ title, subtitle, icon, onPress, primary, neutral, theme })
       accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
       onPress={onPress}
       activeOpacity={0.8}
-      style={theme.shadows.sm}
+      style={[theme.shadows.sm, tile && styles.actionTileWrapper]}
     >
-      <View style={[styles.action, {
+      <View style={[styles.action, tile && styles.actionTile, {
         backgroundColor: background,
         borderColor: neutral ? 'rgba(0, 0, 0, 0.12)' : theme.colors.border,
       }]}>
-        <View style={[styles.icon, { borderRightColor: dividerColor }]}>
-          <Ionicons name={icon} size={24} color={foreground} />
-        </View>
-        <View style={styles.actionCopy}>
-          <Text style={[styles.actionTitle, { color: foreground }]}>{title}</Text>
-          {!!subtitle && <Text style={[styles.actionSubtitle, { color: subtitleColor }]}>{subtitle}</Text>}
-        </View>
-        <Ionicons name="chevron-forward" size={21} color={foreground} />
+        {tile ? <>
+          <View style={[styles.actionTileIcon, { borderRightColor: dividerColor }]}>
+            <Ionicons name={icon} size={22} color={foreground} />
+          </View>
+          <View style={styles.actionTileCopy}>
+            <Text style={[styles.actionTileTitle, { color: foreground }]} numberOfLines={2}>{title}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={foreground} style={styles.actionTileArrow} />
+        </> : <>
+          <View style={[styles.icon, { borderRightColor: dividerColor }]}>
+            <Ionicons name={icon} size={24} color={foreground} />
+          </View>
+          <View style={styles.actionCopy}>
+            <Text style={[styles.actionTitle, { color: foreground }]}>{title}</Text>
+            {!!subtitle && <Text style={[styles.actionSubtitle, { color: subtitleColor }]}>{subtitle}</Text>}
+          </View>
+          <Ionicons name="chevron-forward" size={21} color={foreground} />
+        </>}
       </View>
     </TouchableOpacity>
   );
 }
 
-function AnimatedPromo({ order, eligible, reduceMotion, theme }) {
+function AnimatedPromo({ order, eligible, reduceMotion, theme, compact, tight }) {
   const { width } = useWindowDimensions();
   const translateX = useRef(new Animated.Value(-width)).current;
   const visible = eligible === true && reduceMotion !== null;
@@ -96,11 +104,11 @@ function AnimatedPromo({ order, eligible, reduceMotion, theme }) {
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
     >
       <TouchableOpacity onPress={() => order()} accessibilityRole="button" accessibilityLabel="Ensimmäinen tilaus ilmainen. Siirry tilaamaan."
-        style={[styles.promo, { backgroundColor: theme.colors.homeSurface, borderColor: theme.colors.border }, theme.shadows.sm]}>
-        <Text style={[styles.price, { color: theme.colors.textPrimary, borderRightColor: theme.colors.border }]}>0 €</Text>
+        style={[styles.promo, tight && styles.promoTight, { backgroundColor: theme.colors.homeSurface, borderColor: theme.colors.border }, theme.shadows.sm]}>
+        <Text style={[styles.price, tight && styles.priceTight, { color: theme.colors.textPrimary, borderRightColor: theme.colors.border }]}>0 €</Text>
         <View style={styles.actionCopy}>
-          <Text style={[styles.promoTitle, { color: theme.colors.textPrimary }]}>Ensimmäinen tilaus</Text>
-          <Text style={[styles.promoSubtitle, { color: theme.colors.textSecondary }]}>Ilmainen uusille asiakkaille.</Text>
+          <Text style={[styles.promoTitle, tight && styles.promoTitleTight, { color: theme.colors.textPrimary }]}>{tight ? 'Ensimmäinen tilaus · ilmainen' : 'Ensimmäinen tilaus'}</Text>
+          {!tight && <Text style={[styles.promoSubtitle, { color: theme.colors.textSecondary }]}>Ilmainen uusille asiakkaille.</Text>}
         </View>
         <Ionicons name="arrow-forward" size={20} color={theme.colors.textSecondary} />
       </TouchableOpacity>
@@ -108,59 +116,64 @@ function AnimatedPromo({ order, eligible, reduceMotion, theme }) {
   );
 }
 
-function TractorAndSnow({ height, width, accumulation, snowing, forecast, onTractorLayout }) {
-  const imageHeight = Math.min(240, Math.max(170, height * 0.25));
+function TractorAndSnow({ height, width, accumulation, snowing, forecast, compact, tight, availableHeight }) {
+  // Aggressive sizing caps - tractor CANNOT exceed these sizes
+  let imageHeightPercent, minHeight, maxHeight;
+  
+  if (tight) {
+    imageHeightPercent = 0.12;
+    minHeight = 50;
+    maxHeight = 85;
+  } else if (compact) {
+    imageHeightPercent = 0.14;
+    minHeight = 85;
+    maxHeight = 125;
+  } else {
+    imageHeightPercent = 0.18;
+    minHeight = 100;
+    maxHeight = 150;
+  }
+  
+  // Ultra-conservative constraint - this is the HARD limit
+  const constrainedMaxHeight = Math.min(maxHeight, Math.max(minHeight, (availableHeight - 260) * 0.9));
+  const imageHeight = Math.min(constrainedMaxHeight, Math.max(minHeight, height * imageHeightPercent));
   const imageWidth = Math.min(Math.max(0, Math.min(width, 600) - 40) * 1.65, 850, imageHeight * 724 / 241);
+  const artworkHeight = imageWidth * 241 / 724;
+  const snowfallHeight = artworkHeight * 1.7;
+  const groundHeight = artworkHeight * 0.18;
 
   return (
-    <View style={styles.hero} onLayout={({ nativeEvent: { layout } }) => onTractorLayout('hero', layout)}>
-      {accumulation && <Animated.Image
-        pointerEvents="none"
-        source={snowField}
-        resizeMode="stretch"
-        style={[styles.snowField, {
-          opacity: accumulation,
-          transform: [{ translateY: accumulation.interpolate({ inputRange: [0, 1], outputRange: [47, 12] }) }],
-        }]}
-      />}
-      <View pointerEvents="box-none" style={styles.weatherSpace}>
-        <OuluWeatherBadge forecast={forecast} />
+    <View style={[styles.hero, compact && styles.heroCompact, tight && styles.heroTight]}>
+      <View pointerEvents="box-none" style={[styles.weatherSpace, compact && styles.weatherSpaceCompact, tight && styles.weatherSpaceTight]}>
+        <OuluWeatherBadge forecast={forecast} compact={compact} tight={tight} />
       </View>
-      <View style={styles.heroArtwork} onLayout={({ nativeEvent: { layout } }) => onTractorLayout('artwork', layout)}>
+      <View style={styles.heroArtwork}>
         <View style={[styles.tractor, { height: imageHeight }]} accessible accessibilityLabel="Lumityötä tekevä traktori"
-          onLayout={({ nativeEvent: { layout } }) => onTractorLayout('tractor', layout)}>
-          <View style={[styles.tractorArtboard, { width: imageWidth }]} onLayout={({ nativeEvent: { layout } }) => onTractorLayout('image', layout)}>
+        >
+          <View style={[styles.tractorArtboard, { width: imageWidth }]}>
             <Image pointerEvents="none" source={tractorGround} style={styles.tractorGround} resizeMode="stretch" />
+            {Platform.OS !== 'android' && <View pointerEvents="none" style={[styles.snowGround, {
+              width: Math.min(imageWidth * 0.78, Math.max(0, width - 40)),
+              height: groundHeight,
+              bottom: -artworkHeight * 0.03,
+              borderRadius: groundHeight / 2,
+            }]}>
+              <Image source={snowField} resizeMode="cover" style={styles.snowGroundTexture} />
+              {accumulation && <Animated.View style={[styles.snowGroundFresh, {
+                opacity: accumulation.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 0, 0.25], extrapolate: 'clamp' }),
+              }]} />}
+            </View>}
             <Image source={tractor} style={styles.tractorImage} resizeMode="contain" />
-            {accumulation && <Animated.Image pointerEvents="none" source={tractorSnow} resizeMode="stretch" style={[styles.tractorSnow, { opacity: accumulation }]} />}
           </View>
         </View>
-        {snowing && <Snowfall />}
+        {snowing && <Animated.View pointerEvents="none" style={[styles.snowfallFrame, {
+          width: imageWidth,
+          height: snowfallHeight,
+          opacity: accumulation.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 1, 1], extrapolate: 'clamp' }),
+          transform: [{ translateY: TRACTOR_OFFSET_Y + artworkHeight / 2 - snowfallHeight }],
+        }]}><Snowfall artworkHeight={artworkHeight} /></Animated.View>}
       </View>
     </View>
-  );
-}
-
-function SnowMountain({ height, progress, maxHeight }) {
-  const mountainHeight = height * 0.88;
-  return (
-    <Animated.View
-      pointerEvents="none"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={[styles.snowMountain, {
-        height: mountainHeight,
-        transform: [
-          { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [mountainHeight, mountainHeight - maxHeight] }) },
-          { translateX: progress.interpolate({
-            inputRange: [0, 0.2, 0.4, 0.6, 0.8, 1],
-            outputRange: [0, -8, 7, -6, 8, 0],
-          }) },
-        ],
-      }]}
-    >
-      <Image source={snowMountain} resizeMode="stretch" style={styles.mountainTexture} />
-    </Animated.View>
   );
 }
 
@@ -168,39 +181,23 @@ export default function HomeScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { height, width } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const [eligible, setEligible] = useState(null);
   const [reduceMotion, setReduceMotion] = useState(null);
   const [needsProfile, setNeedsProfile] = useState(null);
   const [homeHeight, setHomeHeight] = useState(0);
-  const [tractorLayout, setTractorLayout] = useState({});
-  const [scrollY, setScrollY] = useState(0);
+  const tight = homeHeight < 580;
+  const compact = homeHeight < 720;
+  const [packageBalance, setPackageBalance] = useState(null);
+  const [packageError, setPackageError] = useState(false);
   const forecast = useOuluForecast();
   const { accumulation, mountain, snowing } = useHomeSnow(reduceMotion);
   const setNavigationSnow = useContext(HomeSnowContext);
-  const updateTractorLayout = useCallback((part, layout) => {
-    setTractorLayout((current) => {
-      const previous = current[part];
-      if (previous?.y === layout.y && previous?.height === layout.height) return current;
-      return { ...current, [part]: { y: layout.y, height: layout.height } };
-    });
-  }, []);
-  const mountainHeight = homeHeight * 0.88;
-  const hasSnowToday = Array.isArray(forecast?.days[0]?.snowTimes) && forecast.days[0].snowTimes.length > 0;
-  const { hero, artwork, tractor: tractorFrame, image } = tractorLayout;
-  const wheelTop = hero && artwork && tractorFrame && image
-    ? hero.y + artwork.y + tractorFrame.y + TRACTOR_OFFSET_Y + image.y + image.height * WHEEL_TOP_RATIO - scrollY
-    : null;
-  const maxMountainHeight = hasSnowToday
-    ? mountainHeight
-    : wheelTop === null ? 0 : Math.max(0, Math.min(mountainHeight, homeHeight - wheelTop));
-  const hasVisibleMountain = maxMountainHeight > 0;
-
   useEffect(() => {
     if (!setNavigationSnow) return undefined;
-    setNavigationSnow(hasVisibleMountain ? mountain : null);
+    setNavigationSnow(mountain);
     return () => setNavigationSnow(null);
-  }, [mountain, setNavigationSnow, hasVisibleMountain]);
+  }, [mountain, setNavigationSnow]);
 
   useEffect(() => {
     let active = true;
@@ -249,6 +246,22 @@ export default function HomeScreen() {
       }
     };
     load();
+    if (PACKAGE_PREVIEW_ENABLED) {
+      (async () => {
+        try {
+          const session = await getPackageSession();
+          const packages = session?.user ? await getPackages() : [];
+          const available = packages.find(item => item.remaining > 0 && Date.parse(item.expires_at) > Date.now());
+          if (active) {
+            setPackageBalance(available || packages[0] || null);
+            setPackageError(false);
+          }
+        } catch (error) {
+          console.error('Package balance could not be loaded:', error);
+          if (active) { setPackageBalance(null); setPackageError(true); }
+        }
+      })();
+    }
     return () => { active = false; };
   }, []));
 
@@ -259,51 +272,127 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.screen} onLayout={({ nativeEvent: { layout } }) => setHomeHeight(layout.height)}>
-      {homeHeight > 0 && <SnowMountain height={homeHeight} progress={mountain} maxHeight={maxMountainHeight} />}
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + SCREEN_TOP_SPACING }]} showsVerticalScrollIndicator={false}
-        onScroll={({ nativeEvent: { contentOffset } }) => setScrollY(contentOffset.y)} scrollEventThrottle={32}>
+      <View style={[styles.content, { paddingTop: Math.min(insets.top + SCREEN_TOP_SPACING, Math.max(8, homeHeight * (tight ? 0.1 : 0.14))) }]}>
         <NotificationLabel />
-        <AnimatedPromo order={order} eligible={eligible} reduceMotion={reduceMotion} theme={theme} />
+        {PACKAGE_PREVIEW_ENABLED && packageBalance && <TouchableOpacity style={[styles.packageBanner, compact && styles.packageBannerCompact, tight && styles.packageBannerTight]} accessibilityRole="button"
+          accessibilityLabel={`Lumityöpaketti. ${Date.parse(packageBalance.expires_at) > Date.now() ? packageBalance.remaining : 0} kertaa jäljellä kymmenestä.`}
+          onPress={() => navigation.navigate('Tilaus', { openPackage: true, requestId: Date.now() })}>
+          <Ionicons name="snow-outline" size={tight ? 20 : compact ? 22 : 25} color={theme.colors.primaryLight} />
+          <View style={styles.packageBannerCopy}>
+            <Text style={[styles.packageBannerEyebrow, { color: theme.colors.textSecondary }]}>PAKETTISI</Text>
+            <Text style={[styles.packageBannerTitle, tight && styles.packageBannerTitleTight, { color: theme.colors.textPrimary }]}>Lumityöpaketti</Text>
+          </View>
+          <View style={styles.packageBannerBalance}>
+            <Text style={[styles.packageBannerCount, tight && styles.packageBannerCountTight, { color: theme.colors.textPrimary }]}>
+              {Date.parse(packageBalance.expires_at) > Date.now() ? packageBalance.remaining : 0}<Text style={[styles.packageBannerTotal, { color: theme.colors.textSecondary }]}> / 10</Text>
+            </Text>
+            <Text style={[styles.packageBannerMeta, tight && styles.packageBannerMetaTight, { color: theme.colors.textSecondary }]}>kertaa jäljellä</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={tight ? 16 : 19} color={theme.colors.textSecondary} />
+        </TouchableOpacity>}
+        {PACKAGE_PREVIEW_ENABLED && packageError && <Text style={styles.packageTrackerError}>Pakettitietoja ei voitu ladata. Yritä myöhemmin uudelleen.</Text>}
+        <AnimatedPromo order={order} eligible={eligible} reduceMotion={reduceMotion} theme={theme} compact={compact} tight={tight} />
         <TractorAndSnow
-          height={height}
+          height={homeHeight}
           width={width}
           accumulation={accumulation}
           forecast={forecast}
-          onTractorLayout={updateTractorLayout}
-          snowing={snowing && forecast?.days[0]?.snow === true}
+          snowing={snowing}
+          compact={compact}
+          tight={tight}
+          availableHeight={homeHeight}
         />
         <View style={styles.actions}>
           <HomeAction title="Tilaa Lumityö" subtitle="Luo palvelutilaus tästä" icon="snow-outline" onPress={() => order()} primary theme={theme} />
-          <HomeAction title="Omat tiedot" subtitle={needsProfile ? 'Täydennä yhteystietosi' : 'Päivitä yhteystiedot'} icon="person-outline" onPress={() => navigation.navigate('Profiili')} neutral theme={theme} />
-          <HomeAction title="Soita tästä" subtitle="Asiakaspalvelu" icon="call-outline" onPress={call} theme={theme} />
+          <View style={styles.secondaryActions}>
+            <HomeAction title="Omat tiedot" subtitle={needsProfile ? 'Täydennä tiedot' : 'Päivitä tiedot'} icon="person-outline" onPress={() => navigation.navigate('Profiili')} neutral theme={theme} tile />
+            <HomeAction title="Soita tästä" subtitle="Asiakaspalvelu" icon="call-outline" onPress={call} theme={theme} tile />
+            <View pointerEvents="none" style={[styles.secondaryDivider, { backgroundColor: theme.colors.border }]} />
+          </View>
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  snowMountain: { position: 'absolute', left: -14, right: -14, bottom: 0, overflow: 'hidden' },
-  mountainTexture: { width: '100%', height: '100%' },
-  content: { flexGrow: 1, paddingBottom: 24, width: '100%', maxWidth: 600, alignSelf: 'center' },
-  hero: { flexGrow: 1, marginHorizontal: 20, paddingBottom: 46, alignItems: 'center' },
-  weatherSpace: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2 },
-  heroArtwork: { flexGrow: 1, width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
-  snowField: { position: 'absolute', bottom: 0, width: '120%', height: 150 },
-  tractor: { width: '165%', maxWidth: 850, alignItems: 'center', justifyContent: 'center', transform: [{ translateY: TRACTOR_OFFSET_Y }] },
+  packageBanner: { minHeight: 58, marginHorizontal: 26, marginBottom: 4, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.24)' },
+  packageBannerCompact: { minHeight: 46, marginBottom: 2, paddingVertical: 2, gap: 8 },
+  packageBannerTight: { minHeight: 40, marginHorizontal: 20, marginBottom: 0, paddingVertical: 2, gap: 8 },
+  packageBannerCopy: { flex: 1, minWidth: 0 },
+  packageBannerEyebrow: { fontSize: 11, letterSpacing: 1.2, fontWeight: '600' },
+  packageBannerTitle: { fontSize: 16, fontWeight: '600' },
+  packageBannerTitleTight: { fontSize: 14 },
+  packageBannerBalance: { flexShrink: 0, alignItems: 'flex-end' },
+  packageBannerCount: { fontSize: 22, lineHeight: 25, fontWeight: '700' },
+  packageBannerCountTight: { fontSize: 18, lineHeight: 20 },
+  packageBannerTotal: { fontSize: 16, fontWeight: '500' },
+  packageBannerMeta: { fontSize: 12 },
+  packageBannerMetaTight: { fontSize: 10 },
+  packageTrackerError: { marginHorizontal: 20, marginBottom: 6, color: '#FFFFFF', fontSize: 13, lineHeight: 17 },
+  content: { flex: 1, paddingBottom: 10, width: '100%', maxWidth: 600, alignSelf: 'center', overflow: 'visible' },
+  hero: { flex: 1, minHeight: 0, marginHorizontal: 20, paddingBottom: 2, alignItems: 'center', overflow: 'visible' },
+  heroCompact: { paddingBottom: 2 },
+  heroTight: { paddingBottom: 0 },
+  weatherSpace: { width: '100%', flexShrink: 0, marginBottom: 2, zIndex: 2, alignItems: 'flex-start' },
+  weatherSpaceCompact: { marginBottom: 2 },
+  weatherSpaceTight: { marginBottom: 0 },
+  heroArtwork: { width: '100%', alignItems: 'center', justifyContent: 'center' },
+  snowField: { position: 'absolute', bottom: -16, alignSelf: 'center' },
+  snowDrift: { position: 'absolute', alignSelf: 'center', bottom: -5, overflow: 'visible' },
+  snowDriftPuff: { position: 'absolute', bottom: 0, width: '47%', height: '70%', borderRadius: 999, backgroundColor: '#F5FAFF', shadowColor: '#A9C5D8', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.24, shadowRadius: 7, elevation: 2 },
+  snowDriftLeft: { left: '2%' },
+  snowDriftRight: { right: '2%' },
+  snowDriftBase: { position: 'absolute', left: '12%', right: '12%', bottom: 0, height: '42%', borderRadius: 999, backgroundColor: '#EAF4FC' },
+  snowfallFrame: { position: 'absolute', top: 0, bottom: 0, alignSelf: 'center' },
+  tractor: {
+    width: '100%',
+    maxWidth: 600,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'visible',
+    transform: [{ translateY: TRACTOR_OFFSET_Y }],
+  },
   tractorArtboard: { aspectRatio: 724 / 241 },
   tractorImage: { width: '100%', height: '100%' },
-  tractorGround: { position: 'absolute', top: 0, width: '100%', height: '106.224%' },
-  tractorSnow: { position: 'absolute', top: 0, width: '100%', height: '100%' },
-  actions: { marginHorizontal: 20, gap: 12 },
+  tractorSnowOverlay: { position: 'absolute', top: 0, bottom: 0, left: '16.6667%', width: '66.6667%' },
+  snowCap: { position: 'absolute', height: '2.4%', minHeight: 2, borderRadius: 999, backgroundColor: '#F8FCFF', shadowColor: '#FFFFFF', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.9, shadowRadius: 2, elevation: 1 },
+  roofSnow: { top: '4%', left: '53%', width: '40%' },
+  hoodSnow: { top: '31%', left: '35%', width: '34%' },
+  bucketSnow: { top: '62%', left: '3%', width: '33%' },
+  rearWheelSnow: { top: '48%', left: '68%', width: '23%', height: '3%', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  frontWheelSnow: { top: '61%', left: '53%', width: '18%', height: '2%', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  tractorGround: {
+    position: 'absolute',
+    top: 10,
+    width: '100%',
+    height: '106.224%',
+    opacity: 0.4,
+  },
+  actions: { marginHorizontal: 20, marginBottom: 12, marginTop: 0, gap: 8, flexShrink: 0 },
+  secondaryActions: { position: 'relative', flexDirection: 'row', gap: 12 },
+  secondaryDivider: { position: 'absolute', top: 10, bottom: 10, left: '50%', width: StyleSheet.hairlineWidth, transform: [{ translateX: -0.5 }], opacity: 0.65 },
+  actionTileWrapper: { flex: 1, minWidth: 0 },
   action: { flexDirection: 'row', alignItems: 'center', minHeight: 76, paddingLeft: 0, paddingRight: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1, gap: 12 },
+  actionTile: { minHeight: 76, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: 12, paddingRight: 12, paddingVertical: 8, gap: 0 },
+  actionTileIcon: { width: 34, alignSelf: 'stretch', alignItems: 'flex-start', justifyContent: 'center', borderRightWidth: StyleSheet.hairlineWidth },
+  actionTileCopy: { flex: 1, minWidth: 0, paddingLeft: 12, paddingRight: 12, alignItems: 'flex-end' },
+  actionTileTitle: { fontSize: 13, lineHeight: 16, fontWeight: '600', textAlign: 'right' },
+  actionTileArrow: { flexShrink: 0 },
   icon: { width: 72, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', borderRightWidth: StyleSheet.hairlineWidth },
   actionCopy: { flex: 1, minWidth: 0 },
   actionTitle: { ...typography.cardTitle, letterSpacing: -0.3 },
   actionSubtitle: { ...typography.bodySmall },
   promoTitle: { ...typography.cardTitle, letterSpacing: -0.3 },
   promoSubtitle: { ...typography.bodySmall },
-  promo: { marginHorizontal: 20, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 16, borderWidth: 1 },
+  promo: { marginHorizontal: 20, marginBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 16, borderWidth: 1 },
+  promoCompact: { marginBottom: 2, gap: 8, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 13 },
+  promoTight: { marginBottom: 0, gap: 6, paddingVertical: 3, paddingHorizontal: 8 },
+  promoTitleCompact: { fontSize: 15, lineHeight: 18 },
+  promoTitleTight: { fontSize: 13, lineHeight: 16 },
+  promoSubtitleCompact: { fontSize: 11, lineHeight: 13 },
   price: { fontFamily: fonts.bold, fontSize: 22, letterSpacing: -0.2, paddingRight: 12, borderRightWidth: 1 },
+  priceTight: { fontSize: 18, paddingRight: 8 },
 });

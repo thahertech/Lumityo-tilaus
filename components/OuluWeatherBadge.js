@@ -75,7 +75,7 @@ export function useOuluForecast() {
   return forecast;
 }
 
-export default function OuluWeatherBadge({ forecast }) {
+export default function OuluWeatherBadge({ forecast, compact = false, tight = false }) {
   const { theme } = useTheme();
   const [lastDayWidth, setLastDayWidth] = useState(0);
   const [lastLabelWidth, setLastLabelWidth] = useState(0);
@@ -83,13 +83,13 @@ export default function OuluWeatherBadge({ forecast }) {
 
   return (
     <View style={styles.widget}>
-      <View style={styles.headingRow}>
+      <View style={[styles.headingRow, compact && styles.headingRowCompact]}>
         <View style={[styles.headingContainer, {
-          backgroundColor: theme.colors.homeSurface,
-          borderColor: theme.colors.border,
-          marginRight: Math.max(0, (lastDayWidth - lastLabelWidth) / 2),
+          backgroundColor: 'rgba(255, 255, 255, 0)',
+          borderColor: 'rgba(255, 255, 255, 0)',
+          marginLeft: Math.max(0, (lastDayWidth - lastLabelWidth) / 2.5),
         }]}>
-          <Text style={[styles.foreground, styles.heading]}>Oulu · sääennuste</Text>
+          <Text style={[styles.foreground, styles.heading, compact && styles.headingCompact, tight && styles.headingTight]}>Oulu · sääennuste</Text>
         </View>
       </View>
       <View style={styles.days}>
@@ -115,7 +115,7 @@ export default function OuluWeatherBadge({ forecast }) {
           return (
             <TouchableOpacity
               key={day.dateKey}
-              style={styles.badge}
+              style={[styles.badge, compact && styles.badgeCompact, tight && styles.badgeTight]}
               onPress={openDetails}
               accessibilityRole="button"
               accessibilityLabel={`${details} ${attribution} Näytä säätiedot ja lisenssi.`}
@@ -124,21 +124,21 @@ export default function OuluWeatherBadge({ forecast }) {
                 ? ({ nativeEvent: { layout } }) => setLastDayWidth(layout.width)
                 : undefined}
             >
-              <Text style={[styles.foreground, styles.day]}
+              <Text style={[styles.foreground, styles.day, compact && styles.dayCompact, tight && styles.dayTight]}
                 onLayout={index === forecast.days.length - 1
                   ? ({ nativeEvent: { layout } }) => setLastLabelWidth(layout.width)
                   : undefined}>{label}</Text>
               <View style={styles.row}>
-                <Ionicons name={day.icon || 'help-circle-outline'} size={23} color={WEATHER_COLOR} style={styles.foreground} />
-                <Text style={[styles.foreground, styles.temperature]}>
+                <Ionicons name={day.icon || 'help-circle-outline'} size={tight ? 14 : compact ? 18 : 23} color={WEATHER_COLOR} style={styles.foreground} />
+                <Text style={[styles.foreground, styles.temperature, compact && styles.temperatureCompact, tight && styles.temperatureTight]}>
                   {day.temperature === null ? '–' : `${day.temperature}°`}
                 </Text>
                 {showSnowIndicator && <View style={styles.upcoming}>
-                  <Text style={[styles.foreground, styles.plus]}>+</Text>
-                  <Ionicons name="snow-outline" size={15} color={WEATHER_COLOR} style={styles.foreground} />
+                  <Text style={[styles.foreground, styles.plus, compact && styles.plusCompact, tight && styles.plusTight]}>+</Text>
+                  <Ionicons name="snow-outline" size={tight ? 10 : compact ? 12 : 15} color={WEATHER_COLOR} style={styles.foreground} />
                 </View>}
               </View>
-              <Text style={[styles.foreground, styles.caption]}>{day.time === null ? 'Ei tietoa' : `klo ${clockTime(day.time)}`}</Text>
+              <Text style={[styles.foreground, styles.caption, compact && styles.captionCompact, tight && styles.captionTight]}>{day.time === null ? 'Ei tietoa' : `klo ${clockTime(day.time)}`}</Text>
             </TouchableOpacity>
           );
         })}
@@ -150,18 +150,31 @@ export default function OuluWeatherBadge({ forecast }) {
 const styles = StyleSheet.create({
   widget: { width: '100%' },
   heading: { color: '#AEBAC4', fontFamily: fonts.regular, fontSize: 15 },
-  headingRow: { alignItems: 'flex-end' },
+  headingCompact: { fontSize: 12 },
+  headingTight: { fontSize: 11 },
+  headingRow: { alignItems: 'flex-start' },
+  headingRowCompact: { marginBottom: -2 },
   headingContainer: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'transparent' },
   days: { flexDirection: 'row', alignItems: 'stretch' },
   badge: {
     flex: 1, minWidth: 0, minHeight: 48, paddingVertical: 4, paddingHorizontal: 2,
     alignItems: 'center', justifyContent: 'center', borderRadius: 16,
   },
+  badgeCompact: { minHeight: 38, paddingVertical: 1, borderRadius: 12 },
+  badgeTight: { minHeight: 30, paddingVertical: 0, borderRadius: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   foreground: { textShadowColor: 'rgba(0, 0, 0, 0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   day: { color: WEATHER_COLOR, fontFamily: fonts.regular, fontSize: 16 },
+  dayCompact: { fontSize: 13 },
+  dayTight: { fontSize: 11 },
   temperature: { color: WEATHER_COLOR, fontFamily: fonts.semibold, fontSize: 22 },
+  temperatureCompact: { fontSize: 17 },
+  temperatureTight: { fontSize: 14 },
   caption: { color: '#C4CDD4', fontFamily: fonts.regular, fontSize: 13 },
+  captionCompact: { fontSize: 10 },
+  captionTight: { fontSize: 8 },
   upcoming: { flexDirection: 'row', alignItems: 'center' },
   plus: { color: WEATHER_COLOR, fontFamily: fonts.semibold, fontSize: 14 },
+  plusCompact: { fontSize: 11 },
+  plusTight: { fontSize: 9 },
 });

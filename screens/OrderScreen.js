@@ -11,19 +11,23 @@ import {
   Alert, 
   StyleSheet, 
   Platform, 
-  KeyboardAvoidingView,
-  UIManager
+  KeyboardAvoidingView
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createCardStyle } from '../theme';
 import { useTheme } from '../ThemeContext';
 import ScreenHeader, { SCREEN_TOP_SPACING, screenLayout } from '../components/ScreenHeader';
+import EdgeBackGesture from '../components/EdgeBackGesture';
+import IconBackButton from '../components/IconBackButton';
 import { getDeviceId } from '../FreeOrderUtils';
 import { upsertUserProfile, getUserProfile, createSnowOrder, getOrdersByDevice, getOrderSettings, hasClaimedFreeOrder } from '../SupabaseAPI';
 import AddressAutocomplete from '../components/AddressAutocompleteMapboxNew';
 import createSharedStyles from '../styles';
 import { CurrentAddressError, getCurrentAddress } from '../utils/currentAddress';
+import { scrollFocusedInputIntoView as scrollFocusedInput } from '../utils/keyboardScroll';
+import { PACKAGE_PREVIEW_ENABLED, getPackageSession, getPackages, submitPackageOrder } from '../PackageAPI';
+import PackageScreen from './PackageScreen';
 
 const orderSteps = [
   { label: 'Valitse palvelu', subtitle: 'Valitse palvelu jatkaaksesi' },
@@ -42,7 +46,7 @@ const AnimatedServiceButton = ({ service, description, isSelected, selectingServ
       style={[styles.serviceButton, isSelected && styles.selectedServiceButton]}
     >
       <View style={styles.serviceIcon}>
-        <Ionicons name={service === 'Lumityö' ? 'snow-outline' : 'construct-outline'} size={26} color={theme.colors.textPrimary} />
+        <Ionicons name={service === 'Lumityö' ? 'snow-outline' : service === 'Jatkuva tilaus' ? 'infinite-outline' : 'construct-outline'} size={26} color={theme.colors.textPrimary} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.serviceButtonText}>{service}</Text>
@@ -73,6 +77,7 @@ const OrderScreen = ({ route }) => {
   const serviceRequest = useRef(0);
   const serviceSelectionInProgress = useRef(false);
   const orderSubmissionInProgress = useRef(false);
+  const packageRequest = useRef(0);
   
   const [isEligibleForFree, setIsEligibleForFree] = useState(false);
   const [firstName, setFirstName] = useState('');
@@ -90,6 +95,35 @@ const OrderScreen = ({ route }) => {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [confirmedOrder, setConfirmedOrder] = useState(null);
+  const [showPackage, setShowPackage] = useState(false);
+  const [packageRefreshKey, setPackageRefreshKey] = useState(0);
+  const [packageSession, setPackageSession] = useState(null);
+  const [packages, setPackages] = useState([]);
+  const [packageError, setPackageError] = useState(false);
+  const [usePackage, setUsePackage] = useState(false);
+
+  const loadPackage = async () => {
+    const request = ++packageRequest.current;
+    try {
+      const session = await getPackageSession();
+      const items = session?.user ? await getPackages() : [];
+      if (request !== packageRequest.current) return;
+      setPackageSession(session);
+      setPackages(items);
+      setPackageError(false);
+    } catch (error) {
+      console.error('Package balance could not be loaded:', error);
+      if (request !== packageRequest.current) return;
+      setPackageSession(null);
+      setPackages([]);
+      setPackageError(true);
+    }
+  };
+
+  const availablePackage = packages.find(item =>
+    item.remaining > 0 && Date.parse(item.expires_at) > Date.now() &&
+    item.service_address.trim().toLocaleLowerCase('fi') === address.trim().toLocaleLowerCase('fi')
+  );
 
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', () => {
@@ -129,7 +163,18 @@ const OrderScreen = ({ route }) => {
     }, [])
   );
 
+  useFocusEffect(React.useCallback(() => {
+    if (PACKAGE_PREVIEW_ENABLED) loadPackage();
+    return () => { packageRequest.current += 1; };
+  }, []));
+
   useEffect(() => {
+    if (route?.params?.openPackage && PACKAGE_PREVIEW_ENABLED) {
+      setPackageRefreshKey((key) => key + 1);
+      setShowPackage(true);
+      navigation.setParams({ openPackage: undefined, requestId: undefined });
+      return;
+    }
     if (route?.params?.requestedService) {
       setConfirmedOrder(null);
       setValidationErrors({});
@@ -180,6 +225,64 @@ const OrderScreen = ({ route }) => {
       const deviceId = await getDeviceId();
       if (request !== serviceRequest.current) return;
 
+      if (service === 'Jatkuva tilaus') {
+        // Handle continuous order setup
+        if (deviceId) {
+          try {
+            const userProfile = await getUserProfile(deviceId);
+            const settings = await getOrderSettings(deviceId);
+            if (request !== serviceRequest.current) return;
+            
+            if (settings && settings.continuous_order === true) {
+              Alert.alert(
+                'Jatkuva tilaus aktiivinen',
+                'Sinulla on jo jatkuva lumityöpalvelu käytössä. Lumityöt tehdään automaattisesti ilman erillistä tilausta kun lunta on satanut riittävästi.',
+                [{ text: 'Ok', onPress: () => setSelectingService(null) }]
+              );
+              serviceSelectionInProgress.current = false;
+              return;
+            }
+
+            // Check if user has required details
+            const hasRequiredDetails = userProfile?.name?.trim() && userProfile?.address?.trim() && userProfile?.phone?.trim();
+            
+            if (!hasRequiredDetails) {
+              Alert.alert(
+                'Pakolliset tiedot puuttuvat',
+                'Täytä ensin pakolliset tiedot (nimi, osoite, puhelinnumero) ennen jatkuvan tilauksen aktivoimista.\n\nSinut ohjataan nyt tietojen täyttöä varten.',
+                [{ text: 'Ok', onPress: () => {
+                  setSelectingService(null);
+                  navigation.navigate('Profiili');
+                } }]
+              );
+              serviceSelectionInProgress.current = false;
+              return;
+            }
+          } catch (error) {
+            console.error('Error checking jatkuva tilaus settings:', error);
+          }
+        }
+
+        // Show setup prompt for continuous order
+        Alert.alert(
+          'Ota jatkuva tilaus käyttöön',
+          'Jatkuva tilaus maksaa 10-20€ per kerta, kun lunta on satanut riittävästi.\n\nLumityöt tehdään automaattisesti ilman erillistä tilausta. \n\nVoit perua milloin tahansa.',
+          [
+            { text: 'Peruuta', style: 'cancel', onPress: () => setSelectingService(null) },
+            { 
+              text: 'Ota käyttöön', 
+              onPress: () => {
+                setSelectingService(null);
+                // Navigate to Omat tiedot and show continuous order info
+                navigation.navigate('Profiili', { scrollToContinuousOrder: true });
+              } 
+            }
+          ]
+        );
+        serviceSelectionInProgress.current = false;
+        return;
+      }
+
       if (service === 'Lumityö' && deviceId) {
         try {
           const settings = await getOrderSettings(deviceId);
@@ -201,6 +304,7 @@ const OrderScreen = ({ route }) => {
       }
       if (request !== serviceRequest.current) return;
       setSelectedService(service);
+      setUsePackage(false);
       setStep(1);
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
     } catch (error) {
@@ -239,7 +343,8 @@ const OrderScreen = ({ route }) => {
 
   const getServiceLabel = (service = selectedService) => {
     if (service === 'Lumityö') {
-      const priceText = isEligibleForFree ? 
+      const priceText = usePackage && service === selectedService && availablePackage ?
+        'Lumityöpaketista: 1 kerta (0 €)' : isEligibleForFree ?
         'ILMAINEN ENSIMMÄINEN TILAUS!' : 
         'Hinta: 10 — 20 €';
       return `Lumityö suoritetaan seuraavan kierroksen aikana \n\n${priceText}`;
@@ -248,6 +353,8 @@ const OrderScreen = ({ route }) => {
         'ILMAINEN ENSIMMÄINEN TILAUS!' : 
         'Hinta: 20 — 30 €';
       return `Polanteen poisto suoritetaan seuraavan kierroksen aikana\n\n${priceText}`;
+    } else if (service === 'Jatkuva tilaus') {
+      return `Lumityö toistuu automaattisesti kun lumi on riittävää\n\nHinta: 10 — 20 €`;
     }
     return '';
   };
@@ -328,24 +435,7 @@ const OrderScreen = ({ route }) => {
   };
 
   const scrollFocusedInputIntoView = () => {
-    const scrollView = scrollViewRef.current;
-    const target = focusedInput.current;
-    const content = scrollView?.getInnerViewNode();
-    if (target == null || content == null || scrollViewportHeight.current <= 0) return;
-
-    UIManager.measureLayout(target, content, () => {
-      if (focusedInput.current === target) console.warn('Unable to measure the focused order field');
-    }, (_x, y, _width, height) => {
-      if (focusedInput.current !== target) return;
-      const top = scrollOffset.current;
-      const visibleHeight = scrollViewportHeight.current;
-      const bottom = top + visibleHeight;
-      if (y + height > bottom - 12) {
-        scrollView.scrollTo({ y: Math.max(0, y + height - visibleHeight + 12), animated: true });
-      } else if (y < top + 12) {
-        scrollView.scrollTo({ y: Math.max(0, y - 12), animated: true });
-      }
-    });
+    scrollFocusedInput(scrollViewRef, focusedInput, scrollViewportHeight, scrollOffset);
   };
 
   const scrollToInput = (event) => {
@@ -361,12 +451,20 @@ const OrderScreen = ({ route }) => {
     if (orderSubmissionInProgress.current || confirmedOrder) return;
     
     if (!validateForm()) return;
+    if (usePackage && (!availablePackage || isEligibleForFree || selectedService !== 'Lumityö' || !packageSession?.user?.id)) {
+      Alert.alert('Pakettia ei voi käyttää', 'Tarkista paketin osoite ja jäljellä olevat kerrat. Maksuton ensimmäinen tilaus käytetään ensin.');
+      return;
+    }
 
     orderSubmissionInProgress.current = true;
     setIsSubmittingOrder(true);
 
     try {
       const deviceId = await getDeviceId();
+      if (usePackage && !await hasClaimedFreeOrder(deviceId)) {
+        Alert.alert('Ensimmäinen tilaus', 'Käytä ensin maksuton ensimmäinen tilauksesi.');
+        return;
+      }
       // Upsert user profile (will update if exists, create if not)
       const currentProfile = await getUserProfile(deviceId);
       const profileResult = await upsertUserProfile(deviceId, {
@@ -388,6 +486,22 @@ const OrderScreen = ({ route }) => {
       if (selectedService === 'Lumityö') {
         const orderSettings = await getOrderSettings(deviceId);
         isJatkuvaTilaus = orderSettings?.continuous_order === true;
+      }
+
+      if (usePackage) {
+        if (isJatkuvaTilaus) {
+          Alert.alert('Jatkuva tilaus', 'Paketin käyttöä jatkuvaan tilaukseen ei ole vielä otettu käyttöön.');
+          return;
+        }
+        await submitPackageOrder(packageSession.user.id, {
+          p_purchase_id: availablePackage.id, p_device_id: deviceId,
+          p_name: firstName.trim(), p_phone: phoneNumber.trim(), p_info: info.trim() || null,
+        });
+        setConfirmedOrder({ service: selectedService, address: availablePackage.service_address });
+        Keyboard.dismiss();
+        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+        await loadPackage();
+        return;
       }
 
       // Determine price based on eligibility and service
@@ -436,6 +550,7 @@ const OrderScreen = ({ route }) => {
     formEdited.current = false;
     setInfo('');
     setAddressCoordinates(null);
+    setUsePackage(false);
     await checkFreeOrderEligibility();
     await checkAndPromptJatkuvaTilaus();
   };
@@ -460,6 +575,41 @@ const OrderScreen = ({ route }) => {
     setStep(step - 1);
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
+
+  const handleStepPress = (targetStep) => {
+    if (isSubmittingOrder || selectingService) return;
+    if (targetStep <= step) {
+      focusedInput.current = null;
+      cancelLocationRequest();
+      Keyboard.dismiss();
+      setStep(targetStep);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+      return;
+    }
+    // Keep the stepper from skipping required service and contact information.
+    if (targetStep === 1 && step === 0) {
+      if (!selectedService) {
+        Alert.alert('Valitse palvelu', 'Valitse palvelu ennen jatkamista.');
+        return;
+      }
+      setStep(1);
+    } else if (targetStep === 2 && step === 1 && validateForm()) {
+      focusedInput.current = null;
+      cancelLocationRequest();
+      Keyboard.dismiss();
+      setStep(2);
+    } else {
+      return;
+    }
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+  };
+
+  if (showPackage && PACKAGE_PREVIEW_ENABLED) {
+    return <PackageScreen refreshKey={packageRefreshKey} onClose={() => { setShowPackage(false); loadPackage(); }} onFreeOrder={() => {
+      setShowPackage(false);
+      handleServiceSelection('Lumityö');
+    }} />;
+  }
 
   return (
     <View style={{ flex: 1, position: 'relative' }}>
@@ -496,14 +646,23 @@ const OrderScreen = ({ route }) => {
                   ))}
                 </View>
                 {orderSteps.map(({ label }, index) => (
-                  <View key={label} style={[styles.progressStep, index === 0 && styles.progressStepStart, index === orderSteps.length - 1 && styles.progressStepEnd]}>
+                  <TouchableOpacity
+                    key={label}
+                    style={[styles.progressStep, index === 0 && styles.progressStepStart, index === orderSteps.length - 1 && styles.progressStepEnd]}
+                    onPress={() => handleStepPress(index)}
+                    disabled={isSubmittingOrder || !!selectingService || (index > step && index !== step + 1)}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Vaihe ${index + 1}: ${label}`}
+                    accessibilityState={{ disabled: isSubmittingOrder || !!selectingService || (index > step && index !== step + 1), selected: index === step }}
+                  >
                     <View style={[styles.progressNumber, index === step && styles.progressNumberActive, index < step && styles.progressNumberComplete]}>
                       {index < step
                         ? <Ionicons name="checkmark" size={18} color={theme.colors.onPrimary} />
                         : <Text style={[styles.progressNumberText, index === step && styles.progressNumberTextActive]}>{index + 1}</Text>}
                     </View>
                     <Text style={[styles.progressLabel, index === step && styles.progressLabelActive, index === 0 && styles.progressLabelStart, index === orderSteps.length - 1 && styles.progressLabelEnd]}>{label}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>}
               {confirmedOrder && (
@@ -521,7 +680,20 @@ const OrderScreen = ({ route }) => {
               )}
               {!confirmedOrder && step === 0 && (
                 <View style={styles.buttonContainer}>
-                  {['Lumityö', 'Polanteen poisto'].map((service) => (
+                  {PACKAGE_PREVIEW_ENABLED && <TouchableOpacity style={styles.packageOffer} accessibilityRole="button"
+                    accessibilityLabel="Lumityöpaketti. 10 lumityökertaa, 150 euroa. Tutustu pakettiin."
+                    onPress={() => setShowPackage(true)}>
+                    <Text style={styles.packageOfferPrice}>150 €</Text>
+                    <View style={styles.packageOfferCopy}>
+                      <Text style={styles.packageOfferTitle}>Lumityöpaketti</Text>
+                      <Text style={styles.packageOfferText}>10 lumityökertaa</Text>
+                    </View>
+                    <View style={styles.packageOfferArrow}>
+                      <Ionicons name="arrow-forward" size={20} color={theme.colors.textPrimary} />
+                    </View>
+                  </TouchableOpacity>}
+                  {packageError && <Text style={styles.packageLoadError}>Pakettitietoja ei voitu ladata. Voit tarkistaa yhteyden ja avata paketin uudelleen.</Text>}
+                  {['Lumityö', 'Polanteen poisto', 'Jatkuva tilaus'].map((service) => (
                     <AnimatedServiceButton
                       key={service}
                       service={service}
@@ -542,6 +714,16 @@ const OrderScreen = ({ route }) => {
                   <View
                     style={[globalStyles.modernCard, styles.detailsCard]}
                   >
+                    {selectedService === 'Lumityö' && !isEligibleForFree && availablePackage && (
+                      <TouchableOpacity style={styles.packageChoice} accessibilityRole="checkbox"
+                        accessibilityState={{ checked: usePackage }} onPress={() => setUsePackage(!usePackage)}>
+                        <Ionicons name={usePackage ? 'checkbox' : 'square-outline'} size={26} color={theme.colors.textPrimary} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.packageChoiceTitle}>Käytä pakettikerta</Text>
+                          <Text style={styles.packageChoiceText}>{availablePackage.remaining}/10 jäljellä · 0 €</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
                     <View style={[globalStyles.cardHeader, styles.detailsHeader]}>
                       <Ionicons name="person-outline" size={24} color={theme.colors.textSecondary} />
                       <Text style={globalStyles.cardHeaderText}>Yhteystiedot</Text>
@@ -679,14 +861,11 @@ const OrderScreen = ({ route }) => {
             </View> : step > 0 && <View style={styles.actionFooterBackground}>
               <View style={[styles.actionFooter, isKeyboardVisible && styles.actionFooterKeyboard]}>
                 {step > 0 && (
-                  <TouchableOpacity
+                  <IconBackButton
                     style={[styles.backButton, isSubmittingOrder && styles.disabledButton]}
                     onPress={handleBack}
                     disabled={isSubmittingOrder}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.backButtonText}>Takaisin</Text>
-                  </TouchableOpacity>
+                  />
                 )}
                 <TouchableOpacity
                   style={[styles.nextButton, isSubmittingOrder && styles.disabledButton]}
@@ -703,11 +882,26 @@ const OrderScreen = ({ route }) => {
             </View>}
           </View>
         </KeyboardAvoidingView>
+      <EdgeBackGesture enabled={step > 0 && !confirmedOrder && !isSubmittingOrder && !selectingService} onBack={handleBack} />
     </View>
   );
 };
 
 const createOrderStyles = (theme) => StyleSheet.create({
+  packageOffer: {
+    minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 12,
+    padding: 14, borderRadius: 16, backgroundColor: theme.colors.homeSurface,
+    borderWidth: 1, borderColor: theme.colors.border, ...theme.shadows.sm,
+  },
+  packageOfferPrice: { color: theme.colors.textPrimary, fontFamily: theme.fonts.bold, fontSize: 26, letterSpacing: -0.8, flexShrink: 1, paddingRight: 12, borderRightWidth: 1, borderRightColor: theme.colors.border },
+  packageOfferCopy: { flex: 1, minWidth: 0 },
+  packageOfferTitle: { fontFamily: theme.fonts.semibold, fontSize: 16, lineHeight: 23, color: theme.colors.textSecondary },
+  packageOfferText: { fontFamily: theme.fonts.bold, fontSize: 18, lineHeight: 25, color: theme.colors.textPrimary, letterSpacing: -0.3 },
+  packageOfferArrow: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.10)' },
+  packageLoadError: { color: theme.colors.textPrimary, fontSize: 16, lineHeight: 22 },
+  packageChoice: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, marginBottom: 16 },
+  packageChoiceTitle: { color: theme.colors.textPrimary, fontSize: 18, fontWeight: '600' },
+  packageChoiceText: { color: theme.colors.textSecondary, fontSize: 16 },
   container: {
     flex: 1,
     paddingTop: 24,
@@ -1009,7 +1203,6 @@ const createOrderStyles = (theme) => StyleSheet.create({
   },
   nextButton: { flex: 2, backgroundColor: theme.colors.primary, borderRadius: 16, minHeight: 52, paddingHorizontal: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   backButton: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 14, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surfaceRaised },
-  backButtonText: { ...theme.typography.button, color: theme.colors.controlText },
   summaryRow: { borderBottomWidth: 1, borderBottomColor: theme.colors.borderLight, paddingVertical: 10 },
   summaryLabel: { ...theme.typography.caption, color: theme.colors.textSecondary, fontFamily: theme.fonts.semibold },
   summaryValue: { ...theme.typography.body, color: theme.colors.textPrimary, lineHeight: 24, marginTop: 2 },

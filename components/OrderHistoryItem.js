@@ -90,6 +90,14 @@ const OrderHistoryItem = ({ item }) => {
               </Text>
             </View>
           )}
+          {Number.isInteger(item.package_remaining_after) && (
+            <View style={localStyles.metaItem}>
+              <Ionicons name="snow-outline" size={16} color={theme.colors.textSecondary} />
+              <Text style={localStyles.metaText}>{item.package_restored
+                ? 'Pakettikerta palautettu'
+                : `Paketissa tilauksen jälkeen ${item.package_remaining_after}/10`}</Text>
+            </View>
+          )}
         </View>
         {(item.info || item.notes) && (
           <View style={localStyles.detailRow}>

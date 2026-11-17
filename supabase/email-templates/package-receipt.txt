@@ -1,0 +1,21 @@
+EmailJS recipient: {{to_email}}
+EmailJS subject: Kuitti lumityöpaketin ostosta
+
+Hei!
+
+Kiitos ostoksestasi. Lumityöpaketin maksu on vahvistettu.
+
+Tuote: Lumityöpaketti, 10 lumityökertaa
+Maksettu: {{total}}
+Maksupäivä: {{paid_date}}
+Voimassa: {{expiry_date}} asti
+Palveluosoite: {{service_address}}
+Tilausnumero: {{purchase_id}}
+Maksutapahtuman tunniste: {{transaction_id}}
+
+Voit seurata jäljellä olevia kertoja Lumityöt-sovelluksessa.
+
+Finntuote
+Y-tunnus 2640397-5
+
+Lisää vahvistettu yrityksen osoite, asiakaspalvelun yhteystiedot ja oikeudellisesti tarkastettu ALV-merkintä ennen mallin käyttöönottoa.

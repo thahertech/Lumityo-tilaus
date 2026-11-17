@@ -1,15 +1,20 @@
 {
   "expo": {
-    "name": "Lumityöt",
+    "name": "Lumityot",
     "slug": "Lumiwork",
-    "version": "2.5.1",
+    "scheme": "lumityot",
+    "version": "2.6.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "15",
-      "bundleIdentifier": "com.senseitechh.Lumiwork"
+      "buildNumber": "16",
+      "bundleIdentifier": "com.senseitechh.Lumiwork",
+      "infoPlist": {
+        "CFBundleDisplayName": "Lumityöt",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.senseitechh.Lumiwork",
-      "versionCode": 13
+      "versionCode": 14
     },
     "web": {
       "favicon": "./assets/icon.png"
@@ -27,11 +32,14 @@
         "projectId": "ae040a3f-e178-4831-b486-7415e1a8e042"
       }
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "plugins": [
       "expo-asset",
       "expo-font",
       "expo-status-bar",
+      "./plugins/withAndroidDisplayName",
       [
         "expo-splash-screen",
         {

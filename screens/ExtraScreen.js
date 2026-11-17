@@ -8,6 +8,7 @@ import { getDeviceId } from '../FreeOrderUtils';
 import { getOrdersByDevice } from '../SupabaseAPI';
 import OrderHistoryItem from '../components/OrderHistoryItem';
 import { useTheme } from '../ThemeContext';
+import { PACKAGE_PREVIEW_ENABLED, getPackageSession, getPackageOrders } from '../PackageAPI';
 
 const OrderHistoryScreen = () => {
   const insets = useSafeAreaInsets();
@@ -18,6 +19,7 @@ const OrderHistoryScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [packageLoadError, setPackageLoadError] = useState(false);
   const requestId = useRef(0);
 
   useFocusEffect(
@@ -34,8 +36,28 @@ const OrderHistoryScreen = () => {
     try {
       const deviceId = await getDeviceId();
       const fetchedOrders = await getOrdersByDevice(deviceId, { throwOnError: true });
+      let mergedOrders = fetchedOrders;
+      if (PACKAGE_PREVIEW_ENABLED) {
+        try {
+          const session = await getPackageSession();
+          const packageOrders = session?.user ? await getPackageOrders() : [];
+          const byId = new Map(fetchedOrders.map(order => [String(order.id), order]));
+          for (const order of packageOrders) {
+            const existing = byId.get(String(order.order_id)) || {
+              id: order.order_id, palvelu: 'Lumityö', address: order.service_address,
+              status: order.status, created_at: order.created_at, price: '0 €',
+            };
+            byId.set(String(order.order_id), { ...existing, package_remaining_after: order.remaining_after, package_restored: order.restored });
+          }
+          mergedOrders = [...byId.values()].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+          if (request === requestId.current) setPackageLoadError(false);
+        } catch (error) {
+          console.error('Package order history could not be loaded:', error);
+          if (request === requestId.current) setPackageLoadError(true);
+        }
+      }
       if (request !== requestId.current) return;
-      setOrders(fetchedOrders);
+      setOrders(mergedOrders);
       setLoadError(false);
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -83,6 +105,7 @@ const OrderHistoryScreen = () => {
       </View>
 
       <View style={localStyles.listContainer}>
+        {packageLoadError && <Text style={localStyles.packageError} accessibilityLiveRegion="polite">Pakettitilauksia ei voitu ladata. Päivitä historia.</Text>}
         <FlatList
           data={orders}
           renderItem={renderItem}
@@ -103,13 +126,16 @@ const OrderHistoryScreen = () => {
       </View>
 
       <View style={localStyles.bottomLabelContainer}>
-        <Text style={localStyles.bottomLabel}>Tilaushistoria on laitekohtainen</Text>
+        <Text style={localStyles.bottomLabel}>{PACKAGE_PREVIEW_ENABLED
+          ? 'Muut tilaukset ovat laitekohtaisia; pakettitilaukset ovat tällä laitteella.'
+          : 'Tilaushistoria on laitekohtainen'}</Text>
       </View>
     </View>
   );
 };
 
 const createLocalStyles = (theme) => StyleSheet.create({
+  packageError: { color: theme.colors.textPrimary, fontSize: 16, paddingHorizontal: 20, paddingBottom: 8 },
   container: {
     flex: 1,
     backgroundColor: 'transparent',

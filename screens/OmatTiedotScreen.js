@@ -39,6 +39,7 @@ const OmatTiedotScreen = ({ route }) => {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isSavingContinuousOrder, setIsSavingContinuousOrder] = useState(false);
   const profileOperationInProgress = useRef(false);
+  const mainScrollRef = useRef(null);
 
   // Contact modal state
   const [showContactModal, setShowContactModal] = useState(false);
@@ -79,7 +80,25 @@ const OmatTiedotScreen = ({ route }) => {
         );
       }, 500);
     }
-  }, [route?.params?.jatkuvaTilaasEnabled, route?.params?.showJatkuvaTilausInfo]);
+  }, [route?.params?.jatkuvaTilaasEnabled, route?.params?.showJatkuvaTilausInfo, route?.params?.scrollToContinuousOrder]);
+
+  // Handle navigation to continuous order section
+  useEffect(() => {
+    if (route?.params?.scrollToContinuousOrder) {
+      setTimeout(() => {
+        // Scroll to continuous order section (approximately at y: 1800)
+        mainScrollRef.current?.scrollTo({ y: 1600, animated: true });
+        // Show info about continuous order
+        Alert.alert(
+          'Jatkuva tilaus',
+          'Aktivoi jatkuva tilaus -kytkin alla olevasta asetuksesta. Näin saat automaattisen lumityöpalvelun ilman erillistä tilausta joka kerta.',
+          [{ text: 'Selvä!' }]
+        );
+      }, 500);
+      // Clear the param after handling
+      navigation.setParams({ scrollToContinuousOrder: undefined });
+    }
+  }, [route?.params?.scrollToContinuousOrder]);
 
   // Reload data when screen comes into focus
   useFocusEffect(
@@ -429,6 +448,7 @@ const OmatTiedotScreen = ({ route }) => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <ScrollView 
+          ref={mainScrollRef}
           style={{ flex: 1 }} 
           contentContainerStyle={[screenLayout.content, { paddingBottom: 24, paddingTop: insets.top + SCREEN_TOP_SPACING }]}
           keyboardShouldPersistTaps="handled"
@@ -932,14 +952,15 @@ const createProfileStyles = (theme) => StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderWidth: 0,
     borderRadius: 12,
+    backgroundColor: '#000000',
   },
   orderInfoButtonText: {
     ...theme.typography.label,
-    color: theme.colors.textPrimary,
+    color: '#FFFFFF',
     textAlign: 'center',
+    fontWeight: '600',
   },
   privacyButton: {
     minHeight: 48,
